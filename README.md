@@ -1,3 +1,5 @@
+Personal Learning APP
+
 # Primer
 
 Primer is a personal learning-reels app for one person. It is a full-screen, vertical feed of short lessons — text, a diagram, or a video under three minutes — tuned to the topics you pick.
