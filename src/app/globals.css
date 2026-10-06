@@ -1,0 +1,70 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink: #0e0d0b;
+  --color-ink-2: #17150f;
+  --color-ink-3: #241f18;
+  --color-paper: #f4ecdc;
+  --color-muted: #b3a790;
+  --color-faint: #7d7466;
+  --color-line: #343026;
+  --color-amber: #e6a23c;
+  --color-amber-2: #ffd18a;
+  --color-rose: #e07a72;
+  --color-mint: #8ecfb8;
+  --font-sans: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-fraunces), ui-serif, Georgia, serif;
+}
+
+html {
+  color-scheme: dark;
+  background: var(--color-ink);
+}
+
+body {
+  min-height: 100dvh;
+  background: var(--color-ink);
+  color: var(--color-paper);
+  font-family: var(--font-sans);
+}
+
+::selection {
+  background: #e6a23c;
+  color: #1a1206;
+}
+
+.stage {
+  background:
+    radial-gradient(900px 420px at 70% -10%, rgba(230, 162, 60, 0.08), transparent 55%),
+    var(--color-ink);
+}
+
+.reels {
+  scroll-snap-type: y mandatory;
+  scrollbar-width: none;
+}
+
+.reels::-webkit-scrollbar {
+  display: none;
+}
+
+.reel {
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+.mermaid-host svg {
+  max-width: 100%;
+  height: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reels {
+    scroll-behavior: auto;
+  }
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-amber);
+  outline-offset: 2px;
+}
