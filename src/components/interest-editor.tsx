@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PRESET_TOPICS } from "@/lib/topics";
 import type { Depth, Interest } from "@/lib/types";
 import { topicsMatch } from "@/lib/text";
@@ -22,29 +22,40 @@ export function InterestEditor({
 }) {
   const [draft, setDraft] = useState("");
   const [active, setActive] = useState(interests[0]?.topic ?? PRESET_TOPICS[0]);
+  const interestsRef = useRef(interests);
+  useEffect(() => {
+    interestsRef.current = interests;
+  }, [interests]);
   const selected = interests.find((item) => item.topic === active) ?? interests[0];
 
+  function commit(next: Interest[]) {
+    interestsRef.current = next;
+    onChange(next);
+  }
+
   function togglePreset(topic: string) {
-    const existing = interests.find((item) => topicsMatch(item.topic, topic));
+    const current = interestsRef.current;
+    const existing = current.find((item) => topicsMatch(item.topic, topic));
     if (existing) {
       setActive(existing.topic);
       return;
     }
-    onChange([...interests, { topic, weight: 3, depth: "beginner", custom: false }]);
+    commit([...current, { topic, weight: 3, depth: "beginner", custom: false }]);
     setActive(topic);
   }
 
   function addCustom() {
     const topic = draft.trim().replace(/\s+/g, " ");
     if (topic.length < 2) return;
-    if (interests.some((item) => topicsMatch(item.topic, topic))) {
+    const current = interestsRef.current;
+    if (current.some((item) => topicsMatch(item.topic, topic))) {
       setDraft("");
       setActive(topic);
       return;
     }
     const preset = PRESET_TOPICS.find((item) => topicsMatch(item, topic));
-    onChange([
-      ...interests,
+    commit([
+      ...current,
       { topic: preset ?? topic, weight: 3, depth: "beginner", custom: !preset },
     ]);
     setActive(preset ?? topic);
@@ -52,7 +63,7 @@ export function InterestEditor({
   }
 
   function patch(topic: string, update: Partial<Interest>) {
-    onChange(interests.map((item) => (item.topic === topic ? { ...item, ...update } : item)));
+    commit(interestsRef.current.map((item) => (item.topic === topic ? { ...item, ...update } : item)));
   }
 
   return (
@@ -124,8 +135,8 @@ export function InterestEditor({
               type="button"
               className="text-sm text-faint underline-offset-4 hover:text-paper hover:underline"
               onClick={() => {
-                const remaining = interests.filter((item) => item.topic !== selected.topic);
-                onChange(remaining);
+                const remaining = interestsRef.current.filter((item) => item.topic !== selected.topic);
+                commit(remaining);
                 setActive(remaining[0]?.topic ?? "");
               }}
             >

@@ -13,6 +13,8 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000). With no `.env` file, you get the sample feed: onboarding, text reels, diagrams, short videos, save, like, go deeper, and already-know.
 
+If you bind the dev server on `0.0.0.0` and open it at `127.0.0.1`, hot reload stays allowed because `next.config.ts` lists `127.0.0.1` in `allowedDevOrigins`. Without that, Next.js blocks the dev socket and the page can sit on the opening splash.
+
 ```bash
 npm test
 npm run lint
