@@ -4,6 +4,8 @@ Primer is a personal learning-reels app for one person. It is a full-screen, ver
 
 There is no sign-up. Interests, likes, and saves stay in this browser (IndexedDB). API keys stay on the server. If no model key is set, the app runs in demo mode from a built-in sample library.
 
+How the client, service worker, IndexedDB, and generation routes fit together is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
 ## Run locally
 
 ```bash
