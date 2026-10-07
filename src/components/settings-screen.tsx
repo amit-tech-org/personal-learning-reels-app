@@ -17,10 +17,9 @@ export function SettingsScreen() {
       <p className="text-[11px] uppercase tracking-[0.2em] text-amber">Settings</p>
       <h1 className="mt-2 font-serif text-4xl text-paper">Your interests</h1>
       <p className="mt-3 text-sm leading-6 text-muted">
-        {app.config?.mode === "live"
-          ? `Live lessons from ${app.config.model}. ${app.config.remainingToday ?? 0} generations left today.`
-          : "Demo mode is on. Reels come from the built-in library until you set an LLM key."}
-        {app.config?.youtube ? " YouTube search is on." : " Video reels use the sample clips until a YouTube key is set."}
+        {app.config?.mode === "bank"
+          ? `The content bank has ${app.config.total ?? 0} reels. Grok Bot refills it when fewer than ${app.config.refillThreshold} are still unread.`
+          : `Demo mode reads the built-in seed${app.config?.total != null ? ` (${app.config.total} reels)` : ""}. No bot token is required.`}
       </p>
       <div className="mt-6">
         <InterestEditor interests={interests} onChange={setInterests} />

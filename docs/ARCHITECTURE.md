@@ -1,6 +1,6 @@
 # Architecture
 
-Primer is one Next.js app for a single owner. The browser keeps the library. The server generates cards and, when a passcode is set, checks the session. There is no account system and no database.
+Primer is one Next.js app for a single owner. The browser keeps the library. The server stores a content bank that Grok Bot fills ahead of time. When a passcode is set, the human routes check the session. There is no account system. The app does not call an LLM and does not generate images.
 
 ```mermaid
 flowchart TB
@@ -17,27 +17,25 @@ flowchart TB
   end
 
   subgraph next [Next.js server]
-    Proxy["proxy.ts<br/>httpOnly session on /api"]
-    Routes["POST /api/feed<br/>POST /api/feed/deeper"]
-    Cap["In-memory cap<br/>daily + per minute"]
-    Cache["45s response cache"]
-    Assemble[assembleFeed / assembleDeeper]
-    Mix["mixFeed<br/>text, text, image, text, video, text"]
-    Demo[Bundled sample bank]
-    LLM["OpenAI-compatible chat<br/>zod parse, one repair"]
-    YT["YouTube Data API<br/>duration ≤ 180s"]
-    Proxy --> Routes
-    Routes --> Cache
-    Routes --> Cap
-    Routes --> Assemble
-    Assemble --> Demo
-    Assemble --> LLM
-    Assemble --> YT
-    Assemble --> Mix
+    Proxy["proxy.ts<br/>session on human /api routes"]
+    Feed["GET /api/content/feed"]
+    Need["POST /api/content/need-more"]
+    Status["GET /api/content/status<br/>bot token"]
+    Ingest["POST /api/content/ingest<br/>bot token"]
+    Store["Content store<br/>Redis or data/content.json"]
+    Proxy --> Feed
+    Proxy --> Need
+    Feed --> Store
+    Need --> Store
+    Status --> Store
+    Ingest --> Store
   end
 
-  UI -->|"interests, seen, known"| Routes
-  Mix --> UI
+  UI -->|"cursor, topics, seen ids"| Feed
+  UI -->|"unread under threshold"| Need
+  Feed --> UI
+  Bot[Grok Bot] --> Status
+  Bot --> Ingest
 ```
 
 ## Client PWA
@@ -48,11 +46,13 @@ Pages are `/` (the feed), `/saved`, and `/settings`. A client `AppStateProvider`
 
 `ServiceWorkerRegister` calls `navigator.serviceWorker.register("/sw.js")` only when `NODE_ENV` is `production`, so dev hot reload is not cached.
 
+Text reels show bullets and an optional body, plus the takeaway. Diagram reels render the card's `mermaid` string in the browser with Mermaid (`securityLevel: "strict"`, dark theme variables). There is no image-generation path and no Wikimedia card. An optional video card plays a `youtube-nocookie.com` iframe only while that reel is active and Play has been tapped.
+
 ## Service worker and caching
 
 `public/sw.js` uses the cache name `primer-shell-v1`. On install it precaches `/`, `/saved`, `/settings`, the manifest, and the two main icons. On activate it deletes any other cache names.
 
-Fetches are network-first. The worker ignores non-GET requests, other origins, and any path under `/api/`. A successful same-origin GET is stored in `primer-shell-v1`. If the network fails, it serves the cached response, or `/` for a navigation, or a 503. Lesson text you have already opened can load offline. New generation still needs the server. Saved cards themselves live in IndexedDB, not in this cache.
+Fetches are network-first. The worker ignores non-GET requests, other origins, and any path under `/api/`. A successful same-origin GET is stored in `primer-shell-v1`. If the network fails, it serves the cached response, or `/` for a navigation, or a 503. Lesson text you have already opened can load offline. New cards still need the content API. Saved cards themselves live in IndexedDB, not in this cache.
 
 ## IndexedDB stores
 
@@ -68,45 +68,50 @@ The database is `primer`, version 1, opened from `src/lib/idb.ts`.
 
 If `indexedDB.open` errors, is blocked, or takes longer than 1.5 seconds, IndexedDB is disabled for that page session and reads return an empty library. The UI still starts. Writes in that session are skipped.
 
+Unread count is the queue entries that have no `seenAt`. When that count is under `REFILL_UNREAD_THRESHOLD` (default 20), the feed client posts `/api/content/need-more` at most once a minute.
+
+## Content bank
+
+`src/lib/content-store.ts` holds one document: `{ cards, signals }`.
+
+Cards are zod-checked. A card has `id`, `type` (`text`, `diagram`, or optional `video`), `topic`, `depth`, `title`, `takeaway`, and `createdAt`. Text cards need 3–6 bullets or a body of at least 40 characters. Diagram cards need `mermaid`. Video cards need an 11-character `youtubeId`, and `durationSeconds` cannot exceed 180. Image cards are rejected.
+
+The feed route pages that list in `createdAt` order. `cursor` is the last card id returned. `topics` (repeatable) limits the page to the reader's interests. `exclude` drops ids this browser already has. `topic` plus `deeper=1` returns unseen cards on that topic, higher depth first. If that page is empty, the client posts a `deeper` signal so the next Grok Bot refill can prefer the topic. A deeper signal does not by itself set `needsRefill`.
+
+Signals are the app's note to Grok Bot. A `queue-low` signal replaces the previous one and carries `unread`, interests, known topics, and seen counts. `needsRefill` is true only when that reported unread count is under the threshold. `POST /api/content/ingest` upserts by id and clears signals, so the bot should read status before it pushes.
+
+## Store
+
+| Mode | When | What persists |
+| --- | --- | --- |
+| File | `KV_REST_API_URL` / `KV_REST_API_TOKEN` are unset | `data/content.json`, or `CONTENT_DATA_PATH` |
+| Redis | Those variables are set, or the `UPSTASH_REDIS_REST_*` aliases | One JSON value at key `primer:content` |
+
+The file is the local and demo seed, and it is writable on a normal machine. Vercel's serverless filesystem does not keep writes, so production ingest needs Redis. Upstash Redis through the Vercel Redis / KV integration is on the free tier and speaks HTTP, which fits a serverless route. If Redis has no value yet, the route seeds it from `data/content.json` on the next read. A read-only filesystem returns 503 from ingest and need-more with that explanation.
+
+Demo mode is `CONTENT_BOT_TOKEN` unset. `GET /api/content/feed` still serves the seed. Ingest and status return 401 until the token is set. `GET /api/config` reports `{ mode: "demo" \| "bank", store, refillThreshold, total }` and no secrets.
+
 ## API routes
 
-| Route | Role |
-| --- | --- |
-| `GET /api/auth/status` | `{ required, unlocked }` from the env and the session cookie |
-| `POST /api/auth/unlock` | Checks `APP_PASSCODE`, sets the cookie. Eight tries per minute per IP |
-| `POST /api/auth/logout` | Clears the cookie |
-| `GET /api/config` | `{ mode, youtube, aiImages, dailyCap, usedToday }`. No secrets |
-| `POST /api/feed` | Next batch |
-| `POST /api/feed/deeper` | Up to three follow-up cards for one reel |
+| Route | Who | Role |
+| --- | --- | --- |
+| `GET /api/auth/status` | Public | `{ required, unlocked }` from the env and the session cookie |
+| `POST /api/auth/unlock` | Public | Checks `APP_PASSCODE`, sets the cookie. Eight tries per minute per IP |
+| `POST /api/auth/logout` | Public | Clears the cookie |
+| `GET /api/config` | Session | `{ mode, store, refillThreshold, total }` |
+| `GET /api/content/feed` | Session | Next cards. Query: `cursor`, `limit` (1–20), `topics`, `exclude`, optional `topic` and `deeper=1` |
+| `POST /api/content/need-more` | Session | Records a low-queue or deeper preference |
+| `GET /api/content/status` | Bot token | `{ total, needsRefill, unreadReported, deeperTopics, signals }` |
+| `POST /api/content/ingest` | Bot token | Zod-validated batch, upsert by id, clear signals |
 
-`src/proxy.ts` runs on `/api/:path*`. If `APP_PASSCODE` is unset, every API request proceeds. If it is set, every API path except `/api/auth/*` needs a valid session or the handler returns 401. The feed pages themselves are not behind the proxy; the client hides them until unlock, and generation cannot run without the cookie.
-
-## LLM generation pipeline and schema validation
-
-Used only when `LLM_API_KEY` is set. `src/lib/llm.ts` POSTs to `{LLM_BASE_URL}/chat/completions` (`LLM_BASE_URL` defaults to `https://api.openai.com/v1`, `LLM_MODEL` to `gpt-4o-mini`). The key stays in the server process. The prompt lists interests with a target depth, recent titles to avoid, and concepts the reader marked as known. The model must return JSON only. It must not invent YouTube ids.
-
-`parseGeneratedBatch` in `src/lib/schema.ts` pulls JSON out of the reply (including a fenced block) and checks it with zod. A text card needs 3–6 bullets or an explanation of at least 40 characters. An image card needs `imageUrl`, `mermaid`, or `imagePrompt`, plus a caption. A video card needs an 11-character `youtubeId` and, when present, `durationSeconds` of at most 180. Stable ids are assigned with a hash of type, topic, and title.
-
-If validation fails, the same chat is retried once with the bad reply and the zod error, asking for corrected JSON. A second failure becomes a 502. Image cards that only have `imagePrompt` are dropped unless `ENABLE_AI_IMAGES=true`, in which case the server calls `{LLM_BASE_URL}/images/generations` (`LLM_IMAGE_MODEL`, default `dall-e-3`). Mermaid source is rendered in the browser, not on the server.
-
-`assembleFeed` asks for lesson cards and YouTube candidates together, then `mixFeed` fills the batch. The slot pattern is text, text, image, text, video, text. Topic choice is weighted by interest weight and reduced when that topic was marked known. Depth steps from beginner to intermediate to advanced after every six seen cards on that topic. Titles that are too similar to recent ones are skipped.
-
-## YouTube curation
-
-`src/lib/youtube.ts` runs only when `YOUTUBE_API_KEY` is set. It searches at most two interest topics, with `type=video`, `videoEmbeddable=true`, and `videoDuration=short`, then loads `contentDetails.duration`. `filterByDuration` keeps clips whose ISO 8601 duration parses to a positive length of at most 180 seconds. Anything longer, unparseable, or errored is dropped, so a missing key or a failed call simply means that batch has no new video cards. The player is a `youtube-nocookie.com` iframe mounted only while that reel is active and Play has been tapped.
-
-Demo mode does not call YouTube. Sample video cards already point at checked clips under three minutes.
+`src/proxy.ts` runs on `/api/:path*`. If `APP_PASSCODE` is unset, every API request proceeds. If it is set, every API path except `/api/auth/*`, `/api/content/ingest`, and `/api/content/status` needs a valid session or the proxy returns 401. Ingest and status skip the session check and require `Authorization: Bearer $CONTENT_BOT_TOKEN` instead. The feed pages themselves are not behind the proxy; the client hides them until unlock.
 
 ## Passcode gate
 
 `APP_PASSCODE` empty means the app is unlocked. When it is set, `POST /api/auth/unlock` compares the submitted passcode and, on a match, sets the `primer_session` cookie: HMAC-SHA256 over the expiry, signed with the passcode, httpOnly, `SameSite=Lax`, 30 days, and `Secure` in production. `verifySessionToken` checks the signature and the expiry. Wrong attempts are limited to eight per minute per IP. The feed client treats a 401 as a local lock and shows the passcode screen again.
 
-## Rate limit and daily cap
-
-`src/lib/rate-limit.ts` keeps one in-memory bucket for the Node process (it resets on restart and is not shared across instances). `GENERATION_DAILY_CAP` defaults to 40 generations per UTC day. `RATE_LIMIT_PER_MINUTE` defaults to 8. Over the cap, `/api/feed` returns 429 with `Retry-After`. Saved reels still open, because they are local.
-
-`POST /api/feed` checks the 45-second response cache before calling `consumeGeneration`. A repeated identical request does not spend the cap. Demo mode, when `LLM_API_KEY` is unset, does not call `consumeGeneration` at all.
+The bot token is a separate secret. It is compared with a timing-safe equality check and is never sent to the browser.
 
 ## Demo mode
 
-`llmConfigured()` is false when `LLM_API_KEY` is missing. `assembleFeed` then calls `buildDemoBatch`, which mixes `DEMO_CARDS` (text, Mermaid, one Wikimedia image, and short sample videos) with the same `mixFeed` rules. Custom topics that are not in the bank get a small synthetic set. `assembleDeeper` prefers curated deeper cards for that topic, then synthetic follow-ups, and returns at most three. The JSON body includes `source: "demo"` or `source: "live"`.
+`data/content.json` ships text and Mermaid cards for LLMs, Agentic AI, and System Design. No env file is required. The same zod schema checks the seed, an ingest batch, and a Redis document.

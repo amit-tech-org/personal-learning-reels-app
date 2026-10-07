@@ -31,7 +31,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <p>
             {seen} read · {saved} saved
           </p>
-          <p className="mt-1">{config?.mode === "live" ? "Live model" : "Sample library"}</p>
+          <p className="mt-1">{config?.mode === "bank" ? "Content bank" : "Sample library"}</p>
           <p className="mt-4 text-xs leading-5">Arrow keys move between reels.</p>
         </div>
       </aside>

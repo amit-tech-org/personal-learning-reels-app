@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { makeCardId } from "./ids";
-import { parseGeneratedBatch } from "./schema";
+import { parseIngestBatch } from "./schema";
 
 const textCard = {
+  id: "llms-tokens-text",
   type: "text",
   topic: "LLMs",
   title: "A token is not a word",
@@ -13,29 +13,31 @@ const textCard = {
     "Rare words split apart.",
   ],
   takeaway: "Budget tokens, not words.",
+  createdAt: "2026-01-01T00:00:01.000Z",
   concepts: ["tokens"],
 };
 
-describe("parseGeneratedBatch", () => {
-  it("accepts a text card and assigns a stable id", () => {
-    const parsed = parseGeneratedBatch({ cards: [textCard] });
+describe("parseIngestBatch", () => {
+  it("accepts a text card with the id the bot sent", () => {
+    const parsed = parseIngestBatch({ cards: [textCard] });
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
-    expect(parsed.cards[0]?.id).toBe(makeCardId("LLMs", "A token is not a word", "text"));
+    expect(parsed.cards[0]?.id).toBe("llms-tokens-text");
     expect(parsed.cards[0]?.bullets).toHaveLength(3);
   });
 
-  it("accepts a text card that explains instead of listing bullets", () => {
-    const parsed = parseGeneratedBatch({
+  it("accepts a text card that uses a body instead of bullets", () => {
+    const parsed = parseIngestBatch({
       cards: [
         {
+          id: "rag-retrieval-text",
           type: "text",
           topic: "RAG",
           title: "Why retrieval sits in front",
           depth: "beginner",
-          explanation:
-            "The model writes from the passages you just fetched. If those passages are wrong or missing, the prose cannot repair the fact.",
+          body: "The model writes from the passages you just fetched. If those passages are wrong or missing, the prose cannot repair the fact.",
           takeaway: "Generation is the last step.",
+          createdAt: "2026-01-02T00:00:01.000Z",
         },
       ],
     });
@@ -43,15 +45,13 @@ describe("parseGeneratedBatch", () => {
   });
 
   it("rejects a text card that is too thin to read", () => {
-    const parsed = parseGeneratedBatch({
+    const parsed = parseIngestBatch({
       cards: [
         {
-          type: "text",
-          topic: "LLMs",
-          title: "Too vague",
-          depth: "beginner",
-          explanation: "Too short.",
-          takeaway: "Nothing here.",
+          ...textCard,
+          id: "llms-thin-text",
+          bullets: undefined,
+          body: "Too short.",
         },
       ],
     });
@@ -61,55 +61,63 @@ describe("parseGeneratedBatch", () => {
   });
 
   it("rejects two bullets because a text reel needs three to six", () => {
-    const parsed = parseGeneratedBatch({
+    const parsed = parseIngestBatch({
       cards: [{ ...textCard, bullets: ["Only one.", "Only two."] }],
     });
     expect(parsed.ok).toBe(false);
   });
 
-  it("accepts an image card with mermaid and drops the image prompt from the card", () => {
-    const parsed = parseGeneratedBatch({
+  it("accepts a diagram card with mermaid source", () => {
+    const parsed = parseIngestBatch({
       cards: [
         {
-          type: "image",
-          topic: "RAG",
-          title: "Retrieve then write",
-          depth: "beginner",
-          mermaid: "flowchart LR\n  Q[Question] --> A[Answer]",
-          caption: "Search first.",
-          takeaway: "The passage is the source.",
-          imagePrompt: "a library",
+          id: "llms-block-diagram",
+          type: "diagram",
+          topic: "LLMs",
+          title: "One token goes around the block",
+          depth: "intermediate",
+          mermaid: "flowchart LR\n  P[Prompt] --> N[Next token]",
+          takeaway: "Generation is a loop.",
+          createdAt: "2026-01-01T00:00:03.000Z",
         },
       ],
     });
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
-    expect(parsed.cards[0]).not.toHaveProperty("imagePrompt");
-    expect(parsed.imagePrompts[0]?.prompt).toBe("a library");
+    expect(parsed.cards[0]?.mermaid).toMatch(/flowchart/);
   });
 
-  it("rejects an image card with no visual", () => {
-    const parsed = parseGeneratedBatch({
+  it("rejects a diagram card with no mermaid source", () => {
+    const parsed = parseIngestBatch({
       cards: [
         {
-          type: "image",
-          topic: "RAG",
+          id: "llms-missing-diagram",
+          type: "diagram",
+          topic: "LLMs",
           title: "Missing picture",
           depth: "beginner",
-          caption: "Nothing to look at.",
           takeaway: "No diagram.",
+          createdAt: "2026-01-01T00:00:03.000Z",
         },
       ],
     });
     expect(parsed.ok).toBe(false);
     if (parsed.ok) return;
-    expect(parsed.error).toMatch(/imageUrl|mermaid|imagePrompt/i);
+    expect(parsed.error).toMatch(/mermaid/i);
+  });
+
+  it("rejects an image card", () => {
+    const parsed = parseIngestBatch({
+      cards: [{ ...textCard, type: "image" }],
+    });
+    expect(parsed.ok).toBe(false);
   });
 
   it("accepts a short video and rejects one past three minutes", () => {
-    const ok = parseGeneratedBatch({
+    const ok = parseIngestBatch({
       cards: [
         {
+          id: "db-sql-video",
           type: "video",
           topic: "Databases",
           title: "SQL in 100 seconds",
@@ -117,14 +125,16 @@ describe("parseGeneratedBatch", () => {
           youtubeId: "zsjvFFKOm3c",
           durationSeconds: 142,
           takeaway: "Ask for the rows you want.",
+          createdAt: "2026-01-03T00:00:01.000Z",
         },
       ],
     });
     expect(ok.ok).toBe(true);
 
-    const tooLong = parseGeneratedBatch({
+    const tooLong = parseIngestBatch({
       cards: [
         {
+          id: "db-long-video",
           type: "video",
           topic: "Databases",
           title: "A long lecture",
@@ -132,6 +142,7 @@ describe("parseGeneratedBatch", () => {
           youtubeId: "zsjvFFKOm3c",
           durationSeconds: 181,
           takeaway: "Too long for a reel.",
+          createdAt: "2026-01-03T00:00:02.000Z",
         },
       ],
     });
@@ -139,33 +150,26 @@ describe("parseGeneratedBatch", () => {
   });
 
   it("rejects a video that has no youtube id", () => {
-    const parsed = parseGeneratedBatch({
+    const parsed = parseIngestBatch({
       cards: [
         {
+          id: "db-blank-video",
           type: "video",
           topic: "Databases",
           title: "Untitled clip",
           depth: "beginner",
           takeaway: "Nothing to play.",
+          createdAt: "2026-01-03T00:00:03.000Z",
         },
       ],
     });
     expect(parsed.ok).toBe(false);
   });
 
-  it("reads a fenced JSON array and ignores the surrounding prose", () => {
-    const raw = `Here you go:\n\`\`\`json\n${JSON.stringify([textCard])}\n\`\`\`\nHope that helps.`;
-    const parsed = parseGeneratedBatch(raw);
-    expect(parsed.ok).toBe(true);
-    if (!parsed.ok) return;
-    expect(parsed.cards).toHaveLength(1);
-    expect(parsed.cards[0]?.title).toBe(textCard.title);
-  });
-
-  it("returns a repairable error when the model emits prose", () => {
-    const parsed = parseGeneratedBatch("I could not decide on a lesson.");
+  it("rejects a batch that repeats an id", () => {
+    const parsed = parseIngestBatch({ cards: [textCard, textCard] });
     expect(parsed.ok).toBe(false);
     if (parsed.ok) return;
-    expect(parsed.error.length).toBeGreaterThan(0);
+    expect(parsed.error).toMatch(/duplicate/i);
   });
 });

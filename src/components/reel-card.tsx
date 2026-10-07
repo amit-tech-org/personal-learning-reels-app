@@ -43,7 +43,7 @@ export function ReelCard({
 
       <div className="mt-5 min-h-0 flex-1 overflow-y-auto">
         {card.type === "text" ? <TextBody card={card} /> : null}
-        {card.type === "image" ? <ImageBody card={card} /> : null}
+        {card.type === "diagram" ? <DiagramBody card={card} /> : null}
         {card.type === "video" ? <VideoBody card={card} active={active} /> : null}
       </div>
 
@@ -74,41 +74,28 @@ export function ReelCard({
 }
 
 function TextBody({ card }: { card: LibraryCard }) {
-  if (card.bullets && card.bullets.length > 0) {
-    return (
-      <ol className="space-y-3">
-        {card.bullets.map((bullet, index) => (
-          <li key={bullet} className="flex gap-3 text-[15px] leading-6 text-paper/95">
-            <span className="mt-0.5 font-serif text-lg text-amber">{index + 1}</span>
-            <span>{bullet}</span>
-          </li>
-        ))}
-      </ol>
-    );
-  }
-  return <p className="text-[15px] leading-7 text-paper/95">{card.explanation}</p>;
+  return (
+    <div className="space-y-4">
+      {card.bullets && card.bullets.length > 0 ? (
+        <ol className="space-y-3">
+          {card.bullets.map((bullet, index) => (
+            <li key={bullet} className="flex gap-3 text-[15px] leading-6 text-paper/95">
+              <span className="mt-0.5 font-serif text-lg text-amber">{index + 1}</span>
+              <span>{bullet}</span>
+            </li>
+          ))}
+        </ol>
+      ) : null}
+      {card.body ? <p className="text-[15px] leading-7 text-paper/95">{card.body}</p> : null}
+    </div>
+  );
 }
 
-function ImageBody({ card }: { card: LibraryCard }) {
+function DiagramBody({ card }: { card: LibraryCard }) {
   return (
     <div className="space-y-3">
       {card.mermaid ? <MermaidDiagram chart={card.mermaid} id={card.id} /> : null}
-      {card.imageUrl ? (
-        // Remote lesson images come from Wikimedia or an optional image API, not a fixed host list.
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={card.imageUrl}
-          alt={card.imageAlt || card.title}
-          className="max-h-[42vh] w-full rounded-3xl bg-ink-3 object-contain"
-        />
-      ) : null}
-      {card.caption ? <p className="text-sm leading-6 text-muted">{card.caption}</p> : null}
-      {card.imageSource ? (
-        <p className="text-[11px] leading-4 text-faint">
-          {card.imageSource}
-          {card.imageLicense ? ` · ${card.imageLicense}` : ""}
-        </p>
-      ) : null}
+      {card.body ? <p className="text-sm leading-6 text-muted">{card.body}</p> : null}
     </div>
   );
 }
@@ -148,7 +135,7 @@ function VideoBody({ card, active }: { card: LibraryCard; active: boolean }) {
         {card.durationSeconds ? ` · ${formatDuration(card.durationSeconds)}` : ""}
         {" · under 3 minutes"}
       </p>
-      {card.caption ? <p className="text-sm leading-6 text-muted">{card.caption}</p> : null}
+      {card.body ? <p className="text-sm leading-6 text-muted">{card.body}</p> : null}
     </div>
   );
 }

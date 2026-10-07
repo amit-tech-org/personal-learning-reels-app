@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ReelCard } from "@/components/reel-card";
 import { useApp } from "@/components/app-state";
 import type { Card, LibraryCard } from "@/lib/types";
@@ -9,15 +9,27 @@ export function ReelFeed({ mode }: { mode: "feed" | "saved" }) {
   const app = useApp();
   const scrollerRef = useRef<HTMLDivElement>(null);
   const loadingRef = useRef(false);
-  const exhaustedRef = useRef(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [exhausted, setExhausted] = useState(false);
-  const [source, setSource] = useState<"demo" | "live" | null>(app.config?.mode ?? null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [follow, setFollow] = useState<Record<string, string[]>>({});
+  const [cursor, setCursor] = useState<string | null>(null);
+  const lastSignalAt = useRef(0);
+  const interestKey = app.profile.interests.map((item) => item.topic).join("|");
+  const interestNow = useRef(interestKey);
+  const [cursorFor, setCursorFor] = useState(interestKey);
+  if (cursorFor !== interestKey) {
+    setCursorFor(interestKey);
+    setCursor(null);
+    setExhausted(false);
+  }
+
+  useLayoutEffect(() => {
+    interestNow.current = interestKey;
+  }, [interestKey]);
 
   const savedIds = useMemo(
     () =>
@@ -41,18 +53,49 @@ export function ReelFeed({ mode }: { mode: "feed" | "saved" }) {
     return ids;
   }, [mode, app.queue, savedIds, follow]);
 
+  const signalNeedMore = useCallback(
+    async (reason: "queue-low" | "deeper", topic?: string, depth?: Card["depth"]) => {
+      const now = Date.now();
+      if (reason === "queue-low" && now - lastSignalAt.current < 60_000) return;
+      if (reason === "queue-low") lastSignalAt.current = now;
+      const request = app.feedRequest(6);
+      try {
+        await fetch("/api/content/need-more", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            unread: app.unreadCount(),
+            reason,
+            topic,
+            depth,
+            interests: request.interests,
+            knownTopics: request.knownTopics,
+            seenCounts: request.seenCounts,
+          }),
+        });
+      } catch {
+        if (reason === "queue-low") lastSignalAt.current = 0;
+      }
+    },
+    [app],
+  );
+
   const loadMore = useCallback(async () => {
-    if (mode !== "feed" || loadingRef.current || exhaustedRef.current) return;
+    if (mode !== "feed" || loadingRef.current || exhausted) return;
     if (app.profile.interests.length === 0) return;
+    const started = interestKey;
     loadingRef.current = true;
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch("/api/feed", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(app.feedRequest(6)),
-      });
+      const request = app.feedRequest(6);
+      const params = new URLSearchParams();
+      params.set("limit", String(request.batchSize));
+      if (cursor) params.set("cursor", cursor);
+      for (const interest of request.interests) params.append("topics", interest.topic);
+      if (request.seenIds.length > 0) params.set("exclude", request.seenIds.slice(-200).join(","));
+      const response = await fetch(`/api/content/feed?${params.toString()}`);
+      if (interestNow.current !== started) return;
       if (response.status === 401) {
         app.lockLocally();
         return;
@@ -60,23 +103,25 @@ export function ReelFeed({ mode }: { mode: "feed" | "saved" }) {
       const body = (await response.json()) as {
         cards?: Card[];
         exhausted?: boolean;
-        source?: "demo" | "live";
+        nextCursor?: string | null;
         error?: string;
       };
+      if (interestNow.current !== started) return;
       if (!response.ok) {
         setError(body.error ?? "Could not load the next reels.");
         return;
       }
-      if (body.source) setSource(body.source);
+      if (body.nextCursor) setCursor(body.nextCursor);
       if (body.cards && body.cards.length > 0) await app.appendCards(body.cards);
-      if (body.exhausted || (body.cards ?? []).length === 0) {
-        exhaustedRef.current = true;
-        setExhausted(true);
-      }
+      if (interestNow.current !== started) return;
+      const unread = app.unreadCount();
+      const threshold = app.config?.refillThreshold ?? 20;
+      if (unread < threshold) void signalNeedMore("queue-low");
+      if (body.exhausted || (body.cards ?? []).length === 0) setExhausted(true);
     } catch {
+      if (interestNow.current !== started) return;
       if (app.queue.length > 0) {
         setNote("Offline. Showing reels already on this device.");
-        exhaustedRef.current = true;
         setExhausted(true);
       } else {
         setError("No connection, and there are no reels stored on this device yet.");
@@ -85,14 +130,14 @@ export function ReelFeed({ mode }: { mode: "feed" | "saved" }) {
       loadingRef.current = false;
       setLoading(false);
     }
-  }, [app, mode]);
+  }, [app, mode, signalNeedMore, cursor, exhausted, interestKey]);
 
   useEffect(() => {
-    if (mode !== "feed") return;
+    if (mode !== "feed" || exhausted) return;
     if (displayed.length > 0 && activeIndex < displayed.length - 3) return;
     const timer = window.setTimeout(() => void loadMore(), 0);
     return () => window.clearTimeout(timer);
-  }, [mode, displayed.length, activeIndex, loadMore]);
+  }, [mode, displayed.length, activeIndex, loadMore, exhausted]);
 
   useEffect(() => {
     const root = scrollerRef.current;
@@ -158,11 +203,14 @@ export function ReelFeed({ mode }: { mode: "feed" | "saved" }) {
     setBusyId(card.id);
     setError(null);
     try {
-      const response = await fetch("/api/feed/deeper", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...app.feedRequest(3), card }),
-      });
+      const request = app.feedRequest(3);
+      const params = new URLSearchParams();
+      params.set("limit", "3");
+      params.set("topic", card.topic);
+      params.set("deeper", "1");
+      const exclude = [...request.seenIds, card.id].slice(-200);
+      if (exclude.length > 0) params.set("exclude", exclude.join(","));
+      const response = await fetch(`/api/content/feed?${params.toString()}`);
       if (response.status === 401) {
         app.lockLocally();
         return;
@@ -174,8 +222,9 @@ export function ReelFeed({ mode }: { mode: "feed" | "saved" }) {
       }
       const cards = body.cards ?? [];
       if (cards.length === 0) {
-        setNote("No further cut on this one.");
-        window.setTimeout(() => setNote(null), 1800);
+        await signalNeedMore("deeper", card.topic, card.depth);
+        setNote(`Asked for more on ${card.topic}. The next refill can go deeper.`);
+        window.setTimeout(() => setNote(null), 2200);
         return;
       }
       await app.insertAfter(card.id, cards);
@@ -246,9 +295,7 @@ export function ReelFeed({ mode }: { mode: "feed" | "saved" }) {
             <div>
               <h2 className="font-serif text-3xl text-paper">That is the end of this stretch.</h2>
               <p className="mt-3 text-sm leading-6 text-muted">
-                {source === "live"
-                  ? "Nothing new matched your interests. Change them in settings, or clear read reels to start again."
-                  : "The sample library is finite. Add an LLM key when you want the feed to keep writing."}
+                Nothing new in the bank matches these interests. When fewer than about twenty reels are unread, Primer asks Grok Bot for a refill.
               </p>
             </div>
           </section>
@@ -261,10 +308,9 @@ export function ReelFeed({ mode }: { mode: "feed" | "saved" }) {
             type="button"
             className="mt-2 text-amber"
             onClick={() => {
-              exhaustedRef.current = false;
-              setExhausted(false);
               setError(null);
-              void loadMore();
+              if (exhausted) setExhausted(false);
+              else void loadMore();
             }}
           >
             Try again

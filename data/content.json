@@ -1,0 +1,132 @@
+{
+  "cards": [
+    {
+      "id": "llms-tokens-text",
+      "type": "text",
+      "topic": "LLMs",
+      "depth": "beginner",
+      "title": "A token is not a word",
+      "bullets": [
+        "Models read text as tokens: a word, a piece of a word, or punctuation.",
+        "Cost and context are counted in tokens, not in the words you see on the page.",
+        "Rare names and code identifiers split into more pieces, so they are easier to misspell back."
+      ],
+      "takeaway": "Budget tokens, not words. The model never sees the letters the way you do.",
+      "concepts": ["tokens", "context"],
+      "createdAt": "2026-01-01T00:00:01.000Z"
+    },
+    {
+      "id": "llms-next-token-text",
+      "type": "text",
+      "topic": "LLMs",
+      "depth": "beginner",
+      "title": "Next-token prediction is the whole trick",
+      "bullets": [
+        "An LLM is trained to guess the next token given everything so far.",
+        "Helpful answers fall out of that habit, plus later instruction tuning.",
+        "It is not looking up a stored fact. It is continuing a pattern that often happens to be true.",
+        "When the pattern is thin, it continues anyway. That continuation is a hallucination."
+      ],
+      "takeaway": "Treat the model as a fluent completer. Ask it to show the steps you can check.",
+      "concepts": ["next-token", "hallucination"],
+      "createdAt": "2026-01-01T00:00:02.000Z"
+    },
+    {
+      "id": "llms-block-diagram",
+      "type": "diagram",
+      "topic": "LLMs",
+      "depth": "intermediate",
+      "title": "One token goes around the block",
+      "body": "The prompt is already a list of tokens. Each block mixes them, then the model scores the next token and appends the one it samples.",
+      "mermaid": "flowchart LR\n  P[Prompt tokens] --> B[Transformer blocks]\n  B --> N[Next-token scores]\n  N --> S[Sample one token]\n  S --> P",
+      "takeaway": "Generation is a loop: read the tokens you have, append one, repeat.",
+      "concepts": ["transformer", "sampling"],
+      "createdAt": "2026-01-01T00:00:03.000Z"
+    },
+    {
+      "id": "agentic-tool-loop-text",
+      "type": "text",
+      "topic": "Agentic AI",
+      "depth": "beginner",
+      "title": "An agent is a model in a loop",
+      "bullets": [
+        "The model proposes the next step. A tool does something the model cannot do alone.",
+        "The tool result comes back as text the model can read on the next turn.",
+        "Stop when the goal is met, a step budget runs out, or the same action repeats."
+      ],
+      "takeaway": "The model decides. The tool acts. The observation is just more text.",
+      "concepts": ["tool-use", "loop"],
+      "createdAt": "2026-01-01T00:00:04.000Z"
+    },
+    {
+      "id": "agentic-stop-text",
+      "type": "text",
+      "topic": "Agentic AI",
+      "depth": "intermediate",
+      "title": "Write the stop condition first",
+      "bullets": [
+        "A loop without a stop will spend the step budget on near-duplicate actions.",
+        "Good stops are observable: a test passed, a file exists, the user confirmed.",
+        "If the model cannot tell success from the tool output, it will keep going."
+      ],
+      "takeaway": "Define done in a way a tool result can prove. Do not leave done to a vibe.",
+      "concepts": ["stop-condition", "budget"],
+      "createdAt": "2026-01-01T00:00:05.000Z"
+    },
+    {
+      "id": "agentic-loop-diagram",
+      "type": "diagram",
+      "topic": "Agentic AI",
+      "depth": "beginner",
+      "title": "Goal, tool, observation, stop",
+      "body": "Each lap either returns to planning with a new observation or exits because the stop check passed.",
+      "mermaid": "flowchart LR\n  G[Goal] --> P[Plan]\n  P --> T[Tool]\n  T --> O[Observation]\n  O --> C{Stop?}\n  C -->|No| P\n  C -->|Yes| D[Done]",
+      "takeaway": "If you cannot point at the stop check, you do not have an agent yet. You have a retry.",
+      "concepts": ["agent-loop"],
+      "createdAt": "2026-01-01T00:00:06.000Z"
+    },
+    {
+      "id": "sysdesign-stateless-text",
+      "type": "text",
+      "topic": "System Design",
+      "depth": "beginner",
+      "title": "Keep the request path stateless",
+      "bullets": [
+        "Any app instance should be able to serve the next request.",
+        "Session data, files, and queues live in a store the instances share.",
+        "When one instance dies, the load balancer sends the next request somewhere else."
+      ],
+      "takeaway": "If a user is stuck to one machine, that machine is now a single point of failure.",
+      "concepts": ["stateless", "load-balancer"],
+      "createdAt": "2026-01-01T00:00:07.000Z"
+    },
+    {
+      "id": "sysdesign-latency-text",
+      "type": "text",
+      "topic": "System Design",
+      "depth": "intermediate",
+      "title": "Name the limit before you draw boxes",
+      "bullets": [
+        "A design that does not say requests per second and a latency budget is a sketch.",
+        "The slowest synchronous hop on the path decides the user's wait.",
+        "Move work that can finish later onto a queue, and keep the request for the answer they are waiting on."
+      ],
+      "takeaway": "Put a number on the path. Then decide what is allowed to be slow.",
+      "concepts": ["latency", "queue"],
+      "createdAt": "2026-01-01T00:00:08.000Z"
+    },
+    {
+      "id": "sysdesign-path-diagram",
+      "type": "diagram",
+      "topic": "System Design",
+      "depth": "beginner",
+      "title": "One request, four hops",
+      "body": "The client only waits on the app. The app reads the database for the answer and hands slower work to the queue.",
+      "mermaid": "flowchart LR\n  C[Client] --> L[Load balancer]\n  L --> A[Stateless app]\n  A --> D[(Database)]\n  A --> Q[Queue]",
+      "takeaway": "Draw the synchronous path separately from the work you are willing to finish later.",
+      "concepts": ["request-path"],
+      "createdAt": "2026-01-01T00:00:09.000Z"
+    }
+  ],
+  "signals": []
+}

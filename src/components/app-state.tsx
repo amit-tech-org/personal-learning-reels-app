@@ -20,13 +20,10 @@ import {
 import type { Card, FeedRequest, Interest, LibraryCard, Profile } from "@/lib/types";
 
 export interface AppConfig {
-  mode: "demo" | "live";
-  model: string | null;
-  youtube: boolean;
-  aiImages: boolean;
-  dailyCap: number;
-  usedToday: number;
-  remainingToday: number | null;
+  mode: "demo" | "bank";
+  store: "file" | "redis";
+  refillThreshold: number;
+  total: number | null;
 }
 
 interface AuthState {
@@ -52,6 +49,7 @@ interface AppStateValue {
   toggleSave: (id: string) => Promise<void>;
   markKnown: (id: string) => Promise<void>;
   markSeen: (id: string) => Promise<void>;
+  unreadCount: () => number;
   resetFeed: () => Promise<void>;
   eraseAll: () => Promise<void>;
   feedRequest: (batchSize?: number) => FeedRequest;
@@ -234,6 +232,11 @@ export function AppStateProvider({ children }: { children: React.ReactNode }) {
         if (!current || current.seenAt) return Promise.resolve();
         return patchCard(id, (card) => ({ ...card, seenAt: Date.now() }));
       },
+      unreadCount: () =>
+        queueRef.current.filter((id) => {
+          const card = cardsRef.current[id];
+          return Boolean(card && !card.seenAt);
+        }).length,
       resetFeed: async () => {
         const kept = Object.values(cardsRef.current).filter((card) => card.saved);
         const nextCards: Record<string, LibraryCard> = {};

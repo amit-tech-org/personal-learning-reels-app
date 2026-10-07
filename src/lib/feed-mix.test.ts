@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { DEMO_CARDS } from "./demo-cards";
 import { mixFeed, mulberry32 } from "./feed-mix";
 import { targetDepth } from "./progress";
 import type { Card, Depth } from "./types";
@@ -47,10 +46,10 @@ describe("mixFeed", () => {
     }),
     card({
       id: "a3",
-      type: "image",
+      type: "diagram",
       topic: "LLMs",
       title: "A small diagram of a layer",
-      caption: "Layers vote.",
+      mermaid: "flowchart LR\n  A --> B",
     }),
     card({
       id: "a4",
@@ -62,7 +61,7 @@ describe("mixFeed", () => {
     }),
     card({ id: "b1", type: "text", topic: "Databases", title: "Indexes jump" }),
     card({ id: "b2", type: "text", topic: "Databases", title: "Transactions promise" }),
-    card({ id: "b3", type: "image", topic: "Databases", title: "A lookup diagram" }),
+    card({ id: "b3", type: "diagram", topic: "Databases", title: "A lookup diagram" }),
     card({ id: "c1", type: "text", topic: "Cooking", title: "Not your topic" }),
   ];
 
@@ -83,7 +82,7 @@ describe("mixFeed", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it("includes an image and a video when the pool has them", () => {
+  it("includes a diagram and a video when the pool has them", () => {
     const mixed = mixFeed({
       candidates: library,
       interests,
@@ -91,7 +90,7 @@ describe("mixFeed", () => {
       rng: mulberry32(2),
     });
     expect(mixed.cards.some((item) => item.type === "text")).toBe(true);
-    expect(mixed.cards.some((item) => item.type === "image")).toBe(true);
+    expect(mixed.cards.some((item) => item.type === "diagram")).toBe(true);
     expect(mixed.cards.some((item) => item.type === "video")).toBe(true);
     expect(mixed.cards.filter((item) => item.type === "text").length).toBeGreaterThan(
       mixed.cards.filter((item) => item.type === "video").length,
@@ -213,11 +212,4 @@ describe("mixFeed", () => {
     expect(mixed.exhausted).toBe(true);
   });
 
-  it("keeps the bundled demo library free of duplicate ids", () => {
-    const ids = DEMO_CARDS.map((item) => item.id);
-    expect(new Set(ids).size).toBe(ids.length);
-    expect(DEMO_CARDS.some((item) => item.type === "video" && (item.durationSeconds ?? 999) <= 180)).toBe(
-      true,
-    );
-  });
 });

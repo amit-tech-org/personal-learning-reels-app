@@ -1,7 +1,7 @@
 export const DEPTHS = ["beginner", "intermediate", "advanced"] as const;
 export type Depth = (typeof DEPTHS)[number];
 
-export const CARD_TYPES = ["text", "image", "video"] as const;
+export const CARD_TYPES = ["text", "diagram", "video"] as const;
 export type CardType = (typeof CARD_TYPES)[number];
 
 export interface Card {
@@ -12,18 +12,18 @@ export interface Card {
   depth: Depth;
   takeaway: string;
   bullets?: string[];
-  explanation?: string;
-  imageUrl?: string;
-  imageAlt?: string;
-  caption?: string;
+  body?: string;
   mermaid?: string;
-  imageSource?: string;
-  imageLicense?: string;
   youtubeId?: string;
   durationSeconds?: number;
   channelTitle?: string;
   concepts?: string[];
   threadLabel?: string;
+  createdAt?: string;
+}
+
+export interface ContentCard extends Card {
+  createdAt: string;
 }
 
 export interface Interest {
@@ -59,4 +59,23 @@ export interface LibraryCard extends Card {
 export interface Profile {
   onboarded: boolean;
   interests: Interest[];
+}
+
+export type RefillReason = "queue-low" | "deeper";
+
+export interface RefillSignal {
+  id: string;
+  at: string;
+  unread: number;
+  reason: RefillReason;
+  topic?: string;
+  depth?: Depth;
+  interests: Interest[];
+  knownTopics: KnownTopic[];
+  seenCounts: Record<string, number>;
+}
+
+export interface ContentDocument {
+  cards: ContentCard[];
+  signals: RefillSignal[];
 }

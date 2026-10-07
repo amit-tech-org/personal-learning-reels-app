@@ -2,11 +2,11 @@ import type { Card, CardType, Interest, KnownTopic } from "./types";
 import { depthDistance, targetDepth } from "./progress";
 import { titlesTooSimilar, topicsMatch } from "./text";
 
-/** Mostly text, one image, one short video per six reels. */
+/** Mostly text, one diagram, one short video per six reels. */
 export const SLOT_PATTERN: CardType[] = [
   "text",
   "text",
-  "image",
+  "diagram",
   "text",
   "video",
   "text",
@@ -147,7 +147,7 @@ export function mixFeed(input: MixInput): MixResult {
   function pickSlot(preferred: CardType): Card | undefined {
     const direct = pickOfType(preferred);
     if (direct) return direct;
-    for (const fallback of ["text", "image", "video"] as const) {
+    for (const fallback of ["text", "diagram", "video"] as const) {
       if (fallback === preferred) continue;
       const card = pickOfType(fallback);
       if (card) return card;
