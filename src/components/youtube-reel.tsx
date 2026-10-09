@@ -124,6 +124,7 @@ export function YoutubeReel({
   const coverRef = useRef<HTMLDivElement>(null);
   const generation = useRef(0);
   const titleRef = useRef(title);
+  const failedRef = useRef(false);
   const [playerSlot, setPlayerSlot] = useState<{ id: string; api: YtPlayer } | null>(null);
   const player = playerSlot?.id === videoId ? playerSlot.api : null;
   const [muted, setMuted] = useState(() => !prefersSound());
@@ -138,12 +139,16 @@ export function YoutubeReel({
     setTrackedActive(active);
     setBlocked(false);
     if (!active) setUserPaused(false);
-    else setMuted(!prefersSound());
+    else {
+      setMuted(!prefersSound());
+      setFailed(false);
+    }
   }
 
   useLayoutEffect(() => {
     titleRef.current = title;
-  }, [title]);
+    failedRef.current = failed;
+  }, [title, failed]);
 
   useEffect(() => {
     const cover = coverRef.current;
@@ -187,13 +192,17 @@ export function YoutubeReel({
               if (event.data === PLAYER_STATE.playing || event.data === PLAYER_STATE.buffering) {
                 setPaused(false);
                 setBlocked(false);
+                setFailed(false);
               } else if (event.data === PLAYER_STATE.paused || event.data === PLAYER_STATE.ended) {
                 setPaused(true);
                 if (event.data === PLAYER_STATE.ended) setProgress(1);
               }
             },
             onError: () => {
-              if (!cancelled && generation.current === token) setFailed(true);
+              if (!cancelled && generation.current === token) {
+                setFailed(true);
+                setBlocked(false);
+              }
             },
           },
         });
@@ -247,10 +256,12 @@ export function YoutubeReel({
             /* destroyed */
           }
           setMuted(true);
-          later(800, () => setBlocked(autoplayBlocked(readState(player))));
+          later(800, () => {
+            if (!failedRef.current) setBlocked(autoplayBlocked(readState(player)));
+          });
           return;
         }
-        setBlocked(autoplayBlocked(state));
+        if (!failedRef.current) setBlocked(autoplayBlocked(state));
       });
     }
 
@@ -277,7 +288,7 @@ export function YoutubeReel({
   }, [player, active]);
 
   function togglePlay() {
-    if (!player) return;
+    if (!player || !active) return;
     const state = readState(player);
     const playing = state === PLAYER_STATE.playing || state === PLAYER_STATE.buffering;
     if (playing) {
@@ -304,7 +315,7 @@ export function YoutubeReel({
   }
 
   function toggleMute() {
-    if (!player) return;
+    if (!player || !active) return;
     if (muted) {
       setPrefersSound(true);
       setMuted(false);
@@ -346,42 +357,46 @@ export function YoutubeReel({
       data-muted={muted ? "true" : "false"}
     >
       <div ref={coverRef} className="yt-cover" />
-      <div
-        className="pointer-events-none absolute inset-x-0 top-0 z-10 h-1 bg-white/20"
-        role="progressbar"
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={percent}
-        aria-label="Video progress"
-      >
-        <div className="h-full bg-amber" style={{ width: `${percent}%` }} />
-      </div>
-      <button
-        type="button"
-        className="yt-hit absolute inset-0 z-10"
-        aria-label={showPaused || blocked ? "Play video" : "Pause video"}
-        onClick={togglePlay}
-      />
-      <button
-        type="button"
-        className="absolute top-3 left-3 z-20 flex items-center gap-2 rounded-full bg-black/55 px-3 py-2 text-paper ring-1 ring-white/15 backdrop-blur"
-        aria-label={muted ? "Unmute" : "Mute"}
-        aria-pressed={!muted}
-        data-testid="reel-mute"
-        onClick={toggleMute}
-      >
-        {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-        {muted && active && !blocked ? <span className="text-xs">Tap for sound</span> : null}
-      </button>
-      {showPaused || blocked ? (
-        <span className="pointer-events-none absolute top-1/2 left-1/2 z-10 grid -translate-x-1/2 -translate-y-1/2 place-items-center text-paper">
-          <span className="grid h-14 w-14 place-items-center rounded-full bg-black/55 ring-1 ring-white/20">
-            <Play className="h-6 w-6 fill-paper" />
-          </span>
-          {blocked ? <span className="mt-2 text-xs">Tap to play</span> : null}
-        </span>
+      {failed ? <p className="sr-only">This video did not start in the reel. Use Watch on YouTube below the player.</p> : null}
+      {!failed && active ? (
+        <>
+          <div
+            className="pointer-events-none absolute inset-x-0 top-0 z-10 h-1 bg-white/20"
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={percent}
+            aria-label="Video progress"
+          >
+            <div className="h-full bg-amber" style={{ width: `${percent}%` }} />
+          </div>
+          <button
+            type="button"
+            className="yt-hit absolute inset-0 z-10"
+            aria-label={showPaused || blocked ? "Play video" : "Pause video"}
+            onClick={togglePlay}
+          />
+          <button
+            type="button"
+            className="absolute top-3 left-3 z-20 flex items-center gap-2 rounded-full bg-black/55 px-3 py-2 text-paper ring-1 ring-white/15 backdrop-blur"
+            aria-label={muted ? "Unmute" : "Mute"}
+            aria-pressed={!muted}
+            data-testid="reel-mute"
+            onClick={toggleMute}
+          >
+            {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+            {muted && active && !blocked ? <span className="text-xs">Tap for sound</span> : null}
+          </button>
+          {showPaused || blocked ? (
+            <span className="pointer-events-none absolute top-1/2 left-1/2 z-10 grid -translate-x-1/2 -translate-y-1/2 place-items-center text-paper">
+              <span className="grid h-14 w-14 place-items-center rounded-full bg-black/55 ring-1 ring-white/20">
+                <Play className="h-6 w-6 fill-paper" />
+              </span>
+              {blocked ? <span className="mt-2 text-xs">Tap to play</span> : null}
+            </span>
+          ) : null}
+        </>
       ) : null}
-      {failed ? <p className="sr-only">This video did not start. Use Watch on YouTube below the player.</p> : null}
     </div>
   );
 }

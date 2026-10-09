@@ -59,7 +59,8 @@ body {
   min-height: 0;
   height: 100%;
   overflow: hidden;
-  border-radius: 1.5rem;
+  /* Square bottom-right corner so the YouTube logo is not clipped by the radius. */
+  border-radius: 1.25rem 1.25rem 0 1.25rem;
   background: #000;
   container-type: size;
   touch-action: pan-y;
