@@ -24,6 +24,7 @@ export interface AppConfig {
   store: "file" | "redis";
   refillThreshold: number;
   total: number | null;
+  youtube: boolean;
 }
 
 interface AuthState {

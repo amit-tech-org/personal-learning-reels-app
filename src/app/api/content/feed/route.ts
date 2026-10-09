@@ -1,4 +1,5 @@
 import { ContentStoreError, parseFeedQuery, readContent, selectFeedPage } from "@/lib/content-store";
+import { topUpShortVideos } from "@/lib/youtube";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -8,7 +9,11 @@ export async function GET(request: Request) {
   }
 
   try {
-    const doc = await readContent();
+    let doc = await readContent();
+    if (!parsed.query.deeper) {
+      const topics = parsed.query.topic ? [parsed.query.topic] : parsed.query.topics;
+      doc = await topUpShortVideos(doc, topics, parsed.query.exclude);
+    }
     const page = selectFeedPage(doc, parsed.query);
     return Response.json(page);
   } catch (error) {

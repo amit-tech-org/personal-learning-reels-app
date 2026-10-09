@@ -29,6 +29,10 @@ flowchart TB
     Need --> Store
     Status --> Store
     Ingest --> Store
+    YT["YouTube Data API<br/>duration ≤ 180s"]
+    Feed --> YT
+    Need --> YT
+    YT -.-> Store
   end
 
   UI -->|"cursor, topics, seen ids"| Feed
@@ -46,7 +50,7 @@ Pages are `/` (the feed), `/saved`, and `/settings`. A client `AppStateProvider`
 
 `ServiceWorkerRegister` calls `navigator.serviceWorker.register("/sw.js")` only when `NODE_ENV` is `production`, so dev hot reload is not cached.
 
-Text reels show bullets and an optional body, plus the takeaway. Diagram reels render the card's `mermaid` string in the browser with Mermaid (`securityLevel: "strict"`, dark theme variables). There is no image-generation path and no Wikimedia card. An optional video card plays a `youtube-nocookie.com` iframe only while that reel is active and Play has been tapped.
+Text reels show bullets and an optional body, plus the takeaway. Diagram reels render the card's `mermaid` string in the browser with Mermaid (`securityLevel: "strict"`, dark theme variables). There is no image-generation path and no Wikimedia card. Video reels show a poster until Play is tapped, and only while that reel is the active one. The iframe is `youtube-nocookie.com` and is not mounted before then.
 
 ## Service worker and caching
 
@@ -74,9 +78,9 @@ Unread count is the queue entries that have no `seenAt`. When that count is unde
 
 `src/lib/content-store.ts` holds one document: `{ cards, signals }`.
 
-Cards are zod-checked. A card has `id`, `type` (`text`, `diagram`, or optional `video`), `topic`, `depth`, `title`, `takeaway`, and `createdAt`. Text cards need 3–6 bullets or a body of at least 40 characters. Diagram cards need `mermaid`. Video cards need an 11-character `youtubeId`, and `durationSeconds` cannot exceed 180. Image cards are rejected.
+Cards are zod-checked. A card has `id`, `type` (`text`, `diagram`, or `video`), `topic`, `depth`, `title`, and `createdAt`. Text and diagram cards need a takeaway. Text cards need 3–6 bullets or a body of at least 40 characters. Diagram cards need `mermaid`. Video cards need an 11-character `youtubeId`, `channelTitle`, and `durationSeconds` from 1 to 180. A video takeaway is optional. Image cards are rejected.
 
-The feed route pages that list in `createdAt` order. `cursor` is the last card id returned. `topics` (repeatable) limits the page to the reader's interests. `exclude` drops ids this browser already has. `topic` plus `deeper=1` returns unseen cards on that topic, higher depth first. If that page is empty, the client posts a `deeper` signal so the next Grok Bot refill can prefer the topic. A deeper signal does not by itself set `needsRefill`.
+Lessons stay in `createdAt` order. `weaveFeed` then inserts a video after every five lessons, so a full page of six is about one video when the bank has one. `cursor` is the last card id in that woven list. `topics` (repeatable) limits the page to the reader's interests. `exclude` drops ids this browser already has. `topic` plus `deeper=1` returns unseen lesson cards on that topic, higher depth first, and does not spend a YouTube search. If that page is empty, the client posts a `deeper` signal so the next Grok Bot refill can prefer the topic. A deeper signal does not by itself set `needsRefill`.
 
 Signals are the app's note to Grok Bot. A `queue-low` signal replaces the previous one and carries `unread`, interests, known topics, and seen counts. `needsRefill` is true only when that reported unread count is under the threshold. `POST /api/content/ingest` upserts by id and clears signals, so the bot should read status before it pushes.
 
@@ -89,7 +93,15 @@ Signals are the app's note to Grok Bot. A `queue-low` signal replaces the previo
 
 The file is the local and demo seed, and it is writable on a normal machine. Vercel's serverless filesystem does not keep writes, so production ingest needs Redis. Upstash Redis through the Vercel Redis / KV integration is on the free tier and speaks HTTP, which fits a serverless route. If Redis has no value yet, the route seeds it from `data/content.json` on the next read. A read-only filesystem returns 503 from ingest and need-more with that explanation.
 
-Demo mode is `CONTENT_BOT_TOKEN` unset. `GET /api/content/feed` still serves the seed. Ingest and status return 401 until the token is set. `GET /api/config` reports `{ mode: "demo" \| "bank", store, refillThreshold, total }` and no secrets.
+Demo mode is `CONTENT_BOT_TOKEN` unset. `GET /api/content/feed` still serves the seed. Ingest and status return 401 until the token is set. `GET /api/config` reports `{ mode: "demo" | "bank", store, refillThreshold, total, youtube }` and no secrets.
+
+## YouTube curator
+
+`src/lib/youtube.ts` runs only when `YOUTUBE_API_KEY` is set. The key stays in the server process. `GET /api/content/feed` (except deeper) and `POST /api/content/need-more` call `topUpShortVideos` when fewer than two unseen video cards remain for the requested topics. Unseen means a video whose id is not in the client's `exclude` list. Need-more has no exclude list, so it counts videos still in the bank.
+
+The search uses `type=video`, `videoEmbeddable=true`, and `videoDuration=short`, then loads `contentDetails.duration`. `parseIso8601Duration` and `filterByDuration` keep a positive length of at most 180 seconds. Anything longer, unparseable, or duplicated by `youtubeId` is dropped. New cards are merged into the bank without clearing Grok Bot's refill signals. Ids are `yt_` plus the video id, so the same clip is not stored twice.
+
+A topic's result is cached for 10 minutes. A process makes at most one search burst a minute and 24 searches per UTC day. The counters are in memory and reset on restart. If the key is missing or a call fails, the feed continues with the cards already in the bank. Grok Bot can also push video cards through ingest; the curator is the other path, not a replacement.
 
 ## API routes
 
@@ -98,7 +110,7 @@ Demo mode is `CONTENT_BOT_TOKEN` unset. `GET /api/content/feed` still serves the
 | `GET /api/auth/status` | Public | `{ required, unlocked }` from the env and the session cookie |
 | `POST /api/auth/unlock` | Public | Checks `APP_PASSCODE`, sets the cookie. Eight tries per minute per IP |
 | `POST /api/auth/logout` | Public | Clears the cookie |
-| `GET /api/config` | Session | `{ mode, store, refillThreshold, total }` |
+| `GET /api/config` | Session | `{ mode, store, refillThreshold, total, youtube }` |
 | `GET /api/content/feed` | Session | Next cards. Query: `cursor`, `limit` (1–20), `topics`, `exclude`, optional `topic` and `deeper=1` |
 | `POST /api/content/need-more` | Session | Records a low-queue or deeper preference |
 | `GET /api/content/status` | Bot token | `{ total, needsRefill, unreadReported, deeperTopics, signals }` |
@@ -114,4 +126,4 @@ The bot token is a separate secret. It is compared with a timing-safe equality c
 
 ## Demo mode
 
-`data/content.json` ships text and Mermaid cards for LLMs, Agentic AI, and System Design. No env file is required. The same zod schema checks the seed, an ingest batch, and a Redis document.
+`data/content.json` ships text and Mermaid cards for LLMs, Agentic AI, and System Design, plus two short YouTube clips (Fireship, under three minutes) so demo mode has a video reel with no API key. The same zod schema checks the seed, an ingest batch, and a Redis document.

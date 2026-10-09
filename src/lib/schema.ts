@@ -13,7 +13,7 @@ export const contentCardSchema = z
     topic: z.string().trim().min(1).max(80),
     title: z.string().trim().min(1).max(140),
     depth: depthSchema,
-    takeaway: z.string().trim().min(1).max(280),
+    takeaway: z.string().trim().min(1).max(280).optional(),
     body: z.string().trim().min(1).max(1200).optional(),
     bullets: z.array(z.string().trim().min(1).max(220)).min(3).max(6).optional(),
     mermaid: z.string().trim().min(1).max(4000).optional(),
@@ -25,6 +25,13 @@ export const contentCardSchema = z
     threadLabel: z.string().trim().max(80).optional(),
   })
   .superRefine((card, ctx) => {
+    if (card.type !== "video" && !card.takeaway) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Text and diagram cards need a takeaway.",
+        path: ["takeaway"],
+      });
+    }
     if (card.type === "text") {
       const bullets = card.bullets?.length ?? 0;
       const body = card.body?.trim().length ?? 0;
@@ -43,12 +50,28 @@ export const contentCardSchema = z
         path: ["mermaid"],
       });
     }
-    if (card.type === "video" && !card.youtubeId) {
-      ctx.addIssue({
-        code: "custom",
-        message: "Video cards need a youtubeId.",
-        path: ["youtubeId"],
-      });
+    if (card.type === "video") {
+      if (!card.youtubeId) {
+        ctx.addIssue({
+          code: "custom",
+          message: "Video cards need a youtubeId.",
+          path: ["youtubeId"],
+        });
+      }
+      if (card.durationSeconds == null) {
+        ctx.addIssue({
+          code: "custom",
+          message: "Video cards need durationSeconds of at most 180.",
+          path: ["durationSeconds"],
+        });
+      }
+      if (!card.channelTitle) {
+        ctx.addIssue({
+          code: "custom",
+          message: "Video cards need a channel.",
+          path: ["channelTitle"],
+        });
+      }
     }
   });
 

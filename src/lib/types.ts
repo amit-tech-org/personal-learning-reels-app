@@ -10,7 +10,7 @@ export interface Card {
   topic: string;
   title: string;
   depth: Depth;
-  takeaway: string;
+  takeaway?: string;
   bullets?: string[];
   body?: string;
   mermaid?: string;

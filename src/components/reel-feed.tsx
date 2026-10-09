@@ -181,7 +181,7 @@ export function ReelFeed({ mode }: { mode: "feed" | "saved" }) {
   }, [activeIndex, displayed.length]);
 
   async function share(card: LibraryCard) {
-    const text = `${card.title}\n\n${card.takeaway}\n\n${card.topic} · Primer`;
+    const text = [card.title, card.takeaway, `${card.topic} · Primer`].filter(Boolean).join("\n\n");
     try {
       if (navigator.share) {
         await navigator.share({ title: card.title, text });

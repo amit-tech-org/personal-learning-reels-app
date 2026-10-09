@@ -18,6 +18,10 @@ export function botConfigured(): boolean {
   return botToken().length > 0;
 }
 
+export function youtubeConfigured(): boolean {
+  return Boolean(process.env.YOUTUBE_API_KEY?.trim());
+}
+
 /** Unread cards in the browser queue below this count ask Grok Bot for a refill. */
 export function refillThreshold(): number {
   return intEnv("REFILL_UNREAD_THRESHOLD", 20);

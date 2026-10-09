@@ -124,7 +124,7 @@ describe("parseIngestBatch", () => {
           depth: "beginner",
           youtubeId: "zsjvFFKOm3c",
           durationSeconds: 142,
-          takeaway: "Ask for the rows you want.",
+          channelTitle: "Fireship",
           createdAt: "2026-01-03T00:00:01.000Z",
         },
       ],
@@ -141,12 +141,49 @@ describe("parseIngestBatch", () => {
           depth: "beginner",
           youtubeId: "zsjvFFKOm3c",
           durationSeconds: 181,
-          takeaway: "Too long for a reel.",
+          channelTitle: "Fireship",
           createdAt: "2026-01-03T00:00:02.000Z",
         },
       ],
     });
     expect(tooLong.ok).toBe(false);
+  });
+
+  it("accepts a video with no takeaway and rejects one with no channel", () => {
+    const ok = parseIngestBatch({
+      cards: [
+        {
+          id: "llms-ml-video",
+          type: "video",
+          topic: "LLMs",
+          title: "Machine learning in 100 seconds",
+          depth: "beginner",
+          youtubeId: "PeMlggyqz0Y",
+          durationSeconds: 155,
+          channelTitle: "Fireship",
+          createdAt: "2026-01-03T00:00:04.000Z",
+        },
+      ],
+    });
+    expect(ok.ok).toBe(true);
+    if (!ok.ok) return;
+    expect(ok.cards[0]?.takeaway).toBeUndefined();
+
+    const noChannel = parseIngestBatch({
+      cards: [
+        {
+          id: "llms-ml-video",
+          type: "video",
+          topic: "LLMs",
+          title: "Machine learning in 100 seconds",
+          depth: "beginner",
+          youtubeId: "PeMlggyqz0Y",
+          durationSeconds: 155,
+          createdAt: "2026-01-03T00:00:04.000Z",
+        },
+      ],
+    });
+    expect(noChannel.ok).toBe(false);
   });
 
   it("rejects a video that has no youtube id", () => {

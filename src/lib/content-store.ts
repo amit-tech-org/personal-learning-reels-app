@@ -62,6 +62,49 @@ export function sortCards(cards: ContentCard[]): ContentCard[] {
   );
 }
 
+/** About one video for every five lessons, in a stable order so cursors keep working. */
+export function weaveFeed(cards: ContentCard[]): ContentCard[] {
+  const lessons: ContentCard[] = [];
+  const videos: ContentCard[] = [];
+  for (const card of cards) {
+    if (card.type === "video") videos.push(card);
+    else lessons.push(card);
+  }
+  if (videos.length === 0 || lessons.length === 0) return [...cards];
+
+  const woven: ContentCard[] = [];
+  let lessonIndex = 0;
+  let videoIndex = 0;
+  while (lessonIndex < lessons.length || videoIndex < videos.length) {
+    const before = woven.length;
+    for (let slot = 0; slot < 5 && lessonIndex < lessons.length; slot += 1) {
+      const lesson = lessons[lessonIndex];
+      if (lesson) woven.push(lesson);
+      lessonIndex += 1;
+    }
+    if (videoIndex < videos.length && lessonIndex > 0) {
+      const video = videos[videoIndex];
+      if (video) woven.push(video);
+      videoIndex += 1;
+    }
+    if (lessonIndex >= lessons.length) {
+      while (videoIndex < videos.length) {
+        const video = videos[videoIndex];
+        if (video) woven.push(video);
+        videoIndex += 1;
+      }
+    }
+    if (woven.length === before) break;
+  }
+  return woven;
+}
+
+export function mergeCards(doc: ContentDocument, incoming: ContentCard[]): ContentDocument {
+  const byId = new Map(doc.cards.map((card) => [card.id, card]));
+  for (const card of incoming) byId.set(card.id, card);
+  return { ...doc, cards: sortCards([...byId.values()]) };
+}
+
 export function applyIngest(doc: ContentDocument, incoming: ContentCard[]): ContentDocument {
   const byId = new Map(doc.cards.map((card) => [card.id, card]));
   for (const card of incoming) byId.set(card.id, card);
@@ -106,7 +149,7 @@ export function selectFeedPage(doc: ContentDocument, query: FeedQuery): FeedPage
 
   if (query.deeper) {
     const exclude = new Set(query.exclude);
-    const unseen = ordered.filter((card) => !exclude.has(card.id));
+    const unseen = ordered.filter((card) => !exclude.has(card.id) && card.type !== "video");
     unseen.sort(
       (a, b) =>
         DEPTH_RANK[b.depth] - DEPTH_RANK[a.depth] || a.createdAt.localeCompare(b.createdAt),
@@ -115,6 +158,7 @@ export function selectFeedPage(doc: ContentDocument, query: FeedQuery): FeedPage
     return { cards: page, nextCursor: null, exhausted: page.length === 0 };
   }
 
+  ordered = weaveFeed(ordered);
   if (query.cursor) {
     const index = ordered.findIndex((card) => card.id === query.cursor);
     if (index >= 0) ordered = ordered.slice(index + 1);
@@ -261,6 +305,10 @@ export async function readContent(): Promise<ContentDocument> {
 
 export async function ingestCards(cards: ContentCard[]): Promise<ContentDocument> {
   return updateDocument((doc) => applyIngest(doc, cards));
+}
+
+export async function mergeIntoBank(cards: ContentCard[]): Promise<ContentDocument> {
+  return updateDocument((doc) => mergeCards(doc, cards));
 }
 
 export async function recordNeedMore(input: NeedMoreInput, now = new Date()): Promise<ContentDocument> {

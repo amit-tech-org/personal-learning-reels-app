@@ -20,6 +20,9 @@ export function SettingsScreen() {
         {app.config?.mode === "bank"
           ? `The content bank has ${app.config.total ?? 0} reels. Grok Bot refills it when fewer than ${app.config.refillThreshold} are still unread.`
           : `Demo mode reads the built-in seed${app.config?.total != null ? ` (${app.config.total} reels)` : ""}. No bot token is required.`}
+        {app.config?.youtube
+          ? " YouTube search adds a short clip when few unseen videos are left."
+          : " Short videos in the feed are the ones already in the bank."}
       </p>
       <div className="mt-6">
         <InterestEditor interests={interests} onChange={setInterests} />

@@ -2,7 +2,7 @@ Personal Learning APP
 
 # Primer
 
-Primer is a personal learning-reels app for one person. It is a full-screen, vertical feed of short lessons — text, a Mermaid diagram, or an optional short video — tuned to the topics you pick.
+Primer is a personal learning-reels app for one person. It is a full-screen, vertical feed of short lessons — text, a Mermaid diagram, or a YouTube clip under three minutes — tuned to the topics you pick.
 
 There is no sign-up. Interests, likes, and saves stay in this browser (IndexedDB). The feed is not written at request time. Grok Bot (the owner's desktop assistant) fills a content bank ahead of time, and the app reads that bank. With no keys, demo mode serves the seed in `data/content.json`.
 
@@ -51,16 +51,24 @@ Copy `.env.example` to `.env.local`.
 | `KV_REST_API_URL` | Upstash Redis REST URL. With the token, this is the durable bank on Vercel. |
 | `KV_REST_API_TOKEN` | Upstash Redis REST token. `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` are aliases. |
 | `CONTENT_DATA_PATH` | Optional path for the JSON file store. Default `data/content.json`. |
+| `YOUTUBE_API_KEY` | YouTube Data API key. The server searches embeddable videos of at most 180 seconds when the bank has few unseen clips for your topics. Empty means no search. |
 
 There is no `LLM_API_KEY`, `LLM_BASE_URL`, or `LLM_MODEL`. The app does not call an LLM, and it does not generate images. Diagram cards carry Mermaid source and render in the browser.
 
 ## What the feed does
 
 - Onboarding asks for topics. Presets include LLMs, Agentic AI, System Design, RAG, Prompt Engineering, Distributed Systems, Databases, and Cloud/AWS. You can add your own. Each topic has a depth (beginner, intermediate, advanced) and a weight from 1 to 5. Change them later in Settings.
-- The feed serves cards from the bank in the order they were written, filtered to your topics, skipping ones this browser has already queued. Text reels have a title, bullets or a short body, a takeaway, a topic, and a depth. Diagram reels add Mermaid source.
+- The feed serves cards from the bank, filtered to your topics, skipping ones this browser has already queued. About one card in six is a video when the bank has one. Text reels have a title, bullets or a short body, a takeaway, a topic, and a depth. Diagram reels add Mermaid source.
 - Like, save, share (the system share sheet, or copy), **Deeper** (more cards on that topic from the bank, or a note for the next Grok Bot refill), and **Known** (recorded on the refill signal).
 - Saved reels are on the Saved tab and remain available offline, along with reels already loaded.
-- An optional video card can be ingested with a YouTube id. The player is a `youtube-nocookie.com` iframe. The app does not search YouTube itself.
+- Video reels play from `youtube-nocookie.com`. The iframe mounts only after you tap Play on the active reel. A video card needs a YouTube id, a channel, and a duration of at most 180 seconds. The takeaway is optional.
+
+## Short videos
+
+Two paths fill video cards. Both land in the same bank, and the feed mixes them at the same ratio.
+
+- **Grok Bot ingest.** A refill batch can include `type: "video"` cards (`youtubeId`, `channelTitle`, `durationSeconds`, topic, depth, title, optional `takeaway`). `POST /api/content/ingest` checks them with the same zod schema as text and diagrams.
+- **The app's curator.** When `YOUTUBE_API_KEY` is set and the bank has fewer than two unseen videos for the topics on a feed or need-more request, the server searches YouTube (`videoEmbeddable=true`, `videoDuration=short`), keeps clips whose ISO 8601 duration is 1–180 seconds, drops duplicate video ids, and stores the new cards. Results are cached for 10 minutes per topic, with at most one search burst a minute and 24 searches a UTC day on this process. If the key is unset, that step does nothing and the feed uses ingested or seed videos only.
 
 ## Install on a phone
 

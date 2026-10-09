@@ -9,6 +9,7 @@ import {
   contentStatus,
   ingestCards,
   loadSeedDocument,
+  mergeCards,
   parseFeedQuery,
   readContent,
   selectFeedPage,
@@ -51,6 +52,9 @@ describe("seed bank", () => {
       expect(cards.some((card) => card.type === "diagram" && card.mermaid)).toBe(true);
     }
     expect(seed.cards.some((card) => card.type === "diagram")).toBe(true);
+    const videos = seed.cards.filter((card) => card.type === "video");
+    expect(videos.length).toBeGreaterThanOrEqual(2);
+    expect(videos.every((card) => card.youtubeId && (card.durationSeconds ?? 999) <= 180)).toBe(true);
     expect(seed.signals).toEqual([]);
   });
 });
@@ -127,6 +131,54 @@ describe("refill signals", () => {
       signal({ reason: "queue-low", unread: 25 }),
     );
     expect(contentStatus(doc, 20).needsRefill).toBe(false);
+  });
+});
+
+describe("video mix", () => {
+  it("places one video in a page of six when the bank has one", () => {
+    const lessons = Array.from({ length: 6 }, (_, index) =>
+      text("l" + index, "LLMs", `2026-01-01T00:00:0${index + 1}.000Z`),
+    );
+    const clip: ContentCard = {
+      id: "v1",
+      type: "video",
+      topic: "LLMs",
+      title: "A short clip",
+      depth: "beginner",
+      youtubeId: "PeMlggyqz0Y",
+      durationSeconds: 155,
+      channelTitle: "Fireship",
+      createdAt: "2026-01-01T00:00:09.000Z",
+    };
+    const page = selectFeedPage(
+      { cards: [...lessons, clip], signals: [] },
+      { cursor: null, limit: 6, topics: ["LLMs"], exclude: [], topic: null, deeper: false },
+    );
+    expect(page.cards).toHaveLength(6);
+    expect(page.cards.filter((card) => card.type === "video")).toHaveLength(1);
+    expect(page.cards[5]?.type).toBe("video");
+  });
+
+  it("keeps refill signals when a curated video is merged", () => {
+    const doc: ContentDocument = {
+      cards: [text("a", "LLMs", "2026-01-01T00:00:01.000Z")],
+      signals: [signal({ reason: "queue-low", unread: 3 })],
+    };
+    const merged = mergeCards(doc, [
+      {
+        id: "v1",
+        type: "video",
+        topic: "LLMs",
+        title: "A short clip",
+        depth: "beginner",
+        youtubeId: "PeMlggyqz0Y",
+        durationSeconds: 155,
+        channelTitle: "Fireship",
+        createdAt: "2026-01-02T00:00:01.000Z",
+      },
+    ]);
+    expect(merged.signals).toHaveLength(1);
+    expect(merged.cards.map((card) => card.id)).toEqual(["a", "v1"]);
   });
 });
 

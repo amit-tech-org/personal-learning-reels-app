@@ -47,10 +47,12 @@ export function ReelCard({
         {card.type === "video" ? <VideoBody card={card} active={active} /> : null}
       </div>
 
-      <div className="mt-4 rounded-3xl border border-line bg-ink-2/90 px-4 py-3">
-        <p className="text-[10px] uppercase tracking-[0.18em] text-amber">Remember</p>
-        <p className="mt-1 text-[15px] leading-snug text-paper">{card.takeaway}</p>
-      </div>
+      {card.takeaway ? (
+        <div className="mt-4 rounded-3xl border border-line bg-ink-2/90 px-4 py-3">
+          <p className="text-[10px] uppercase tracking-[0.18em] text-amber">Remember</p>
+          <p className="mt-1 text-[15px] leading-snug text-paper">{card.takeaway}</p>
+        </div>
+      ) : null}
 
       <div className="absolute right-3 top-[38%] z-10 flex -translate-y-1/2 flex-col items-center gap-4">
         <RailButton label="Like" pressed={card.liked} onClick={onLike}>
@@ -112,6 +114,7 @@ function VideoBody({ card, active }: { card: LibraryCard; active: boolean }) {
           className="aspect-video w-full rounded-3xl bg-black"
           src={`https://www.youtube-nocookie.com/embed/${card.youtubeId}?rel=0&modestbranding=1`}
           title={card.title}
+          loading="lazy"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
           allowFullScreen
         />
@@ -123,7 +126,7 @@ function VideoBody({ card, active }: { card: LibraryCard; active: boolean }) {
         >
           {poster ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={poster} alt="" className="h-full w-full object-cover opacity-80" />
+            <img src={poster} alt="" loading="lazy" className="h-full w-full object-cover opacity-80" />
           ) : null}
           <span className="absolute inset-0 grid place-items-center">
             <span className="rounded-full bg-amber px-4 py-2 text-sm font-medium text-ink">Play</span>

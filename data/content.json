@@ -126,6 +126,30 @@
       "takeaway": "Draw the synchronous path separately from the work you are willing to finish later.",
       "concepts": ["request-path"],
       "createdAt": "2026-01-01T00:00:09.000Z"
+    },
+    {
+      "id": "llms-ml-video",
+      "type": "video",
+      "topic": "LLMs",
+      "depth": "beginner",
+      "title": "Machine learning in 100 seconds",
+      "youtubeId": "PeMlggyqz0Y",
+      "durationSeconds": 155,
+      "channelTitle": "Fireship",
+      "takeaway": "A model is a file that learned its weights from data, then repeats that guess on new input.",
+      "createdAt": "2026-01-01T00:00:10.000Z"
+    },
+    {
+      "id": "sysdesign-docker-video",
+      "type": "video",
+      "topic": "System Design",
+      "depth": "beginner",
+      "title": "Docker in 100 seconds",
+      "youtubeId": "Gjnup-PuquQ",
+      "durationSeconds": 127,
+      "channelTitle": "Fireship",
+      "takeaway": "Package the app and its dependencies together before you argue about servers.",
+      "createdAt": "2026-01-01T00:00:11.000Z"
     }
   ],
   "signals": []

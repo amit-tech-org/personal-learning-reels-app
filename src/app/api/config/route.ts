@@ -1,5 +1,5 @@
 import { ContentStoreError, getContentStatus } from "@/lib/content-store";
-import { botConfigured, contentStoreKind, refillThreshold } from "@/lib/env";
+import { botConfigured, contentStoreKind, refillThreshold, youtubeConfigured } from "@/lib/env";
 
 export async function GET() {
   let total: number | null = null;
@@ -14,5 +14,6 @@ export async function GET() {
     store: contentStoreKind(),
     refillThreshold: refillThreshold(),
     total,
+    youtube: youtubeConfigured(),
   });
 }
