@@ -13,8 +13,8 @@ export function Onboarding() {
 
   return (
     <main className="mx-auto min-h-dvh w-full max-w-lg px-5 py-10 pb-16" data-testid="onboarding">
-      <p className="text-[11px] uppercase tracking-[0.22em] text-amber">Primer</p>
-      <h1 className="mt-3 font-serif text-[2.6rem] leading-[1.05] text-paper">
+      <p className="text-[11px] uppercase tracking-[0.22em] text-primary">Primer</p>
+      <h1 className="mt-3 font-serif text-[2.6rem] leading-[1.05] text-foreground">
         What should the feed teach you?
       </h1>
       <p className="mt-4 text-base leading-7 text-muted">

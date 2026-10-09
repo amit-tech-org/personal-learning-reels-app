@@ -34,15 +34,15 @@ export function ReelCard({
       aria-label={`${card.type} reel: ${card.title}`}
     >
       <header className="flex items-center justify-between gap-3">
-        <p className="text-[11px] uppercase tracking-[0.2em] text-amber">{card.topic}</p>
+        <p className="text-[11px] uppercase tracking-[0.2em] text-primary">{card.topic}</p>
         <p className="rounded-full border border-line px-2 py-1 text-[10px] uppercase tracking-[0.14em] text-faint">
           {card.depth}
         </p>
       </header>
       {card.threadLabel ? (
-        <p className="mt-3 text-xs uppercase tracking-[0.16em] text-mint">{card.threadLabel}</p>
+        <p className="mt-3 text-xs uppercase tracking-[0.16em] text-success">{card.threadLabel}</p>
       ) : null}
-      <h2 className="mt-3 font-serif text-[2rem] leading-[1.12] tracking-tight text-paper">{card.title}</h2>
+      <h2 className="mt-3 font-serif text-[2rem] leading-[1.12] tracking-tight text-foreground">{card.title}</h2>
 
       <div
         className={
@@ -57,24 +57,24 @@ export function ReelCard({
       </div>
 
       {card.takeaway ? (
-        <div className="mt-4 rounded-3xl border border-line bg-ink-2/90 px-4 py-3">
-          <p className="text-[10px] uppercase tracking-[0.18em] text-amber">Remember</p>
-          <p className="mt-1 text-[15px] leading-snug text-paper">{card.takeaway}</p>
+        <div className="mt-4 rounded-3xl border border-line bg-surface/90 px-4 py-3">
+          <p className="text-[10px] uppercase tracking-[0.18em] text-primary">Remember</p>
+          <p className="mt-1 text-[15px] leading-snug text-foreground">{card.takeaway}</p>
         </div>
       ) : null}
 
       <div className="absolute right-3 top-[38%] z-10 flex -translate-y-1/2 flex-col items-center gap-4">
         <RailButton label="Like" pressed={card.liked} onClick={onLike}>
-          <Heart className={card.liked ? "fill-rose text-rose" : ""} />
+          <Heart className={card.liked ? "fill-like text-like" : ""} />
         </RailButton>
         <RailButton label="Save" pressed={card.saved} onClick={onSave}>
-          <Bookmark className={card.saved ? "fill-amber text-amber" : ""} />
+          <Bookmark className={card.saved ? "fill-primary text-primary" : ""} />
         </RailButton>
         <RailButton label="Deeper" pressed={false} onClick={onDeeper} disabled={busy}>
           <Layers />
         </RailButton>
         <RailButton label="Known" pressed={card.known} onClick={onKnown}>
-          <Check className={card.known ? "text-mint" : ""} />
+          <Check className={card.known ? "text-success" : ""} />
         </RailButton>
         <RailButton label="Share" pressed={false} onClick={onShare}>
           <Share />
@@ -90,14 +90,14 @@ function TextBody({ card }: { card: LibraryCard }) {
       {card.bullets && card.bullets.length > 0 ? (
         <ol className="space-y-3">
           {card.bullets.map((bullet, index) => (
-            <li key={bullet} className="flex gap-3 text-[15px] leading-6 text-paper/95">
-              <span className="mt-0.5 font-serif text-lg text-amber">{index + 1}</span>
+            <li key={bullet} className="flex gap-3 text-[15px] leading-6 text-foreground/95">
+              <span className="mt-0.5 font-serif text-lg text-primary">{index + 1}</span>
               <span>{bullet}</span>
             </li>
           ))}
         </ol>
       ) : null}
-      {card.body ? <p className="text-[15px] leading-7 text-paper/95">{card.body}</p> : null}
+      {card.body ? <p className="text-[15px] leading-7 text-foreground/95">{card.body}</p> : null}
     </div>
   );
 }
@@ -128,7 +128,7 @@ function VideoBody({ card, active, warm }: { card: LibraryCard; active: boolean;
           <>
             {" · "}
             <a
-              className="text-amber underline-offset-2 hover:underline"
+              className="text-primary underline-offset-2 hover:underline"
               href={`https://www.youtube.com/watch?v=${card.youtubeId}`}
               target="_blank"
               rel="noreferrer noopener"
@@ -163,12 +163,12 @@ function RailButton({
       aria-pressed={pressed}
       disabled={disabled}
       onClick={onClick}
-      className="flex flex-col items-center gap-1 text-paper disabled:opacity-40"
+      className="flex flex-col items-center gap-1 text-white disabled:opacity-40"
     >
       <span className="grid h-11 w-11 place-items-center rounded-full bg-black/45 ring-1 ring-white/10 backdrop-blur [&_svg]:h-5 [&_svg]:w-5">
         {children}
       </span>
-      <span className="text-[10px] uppercase tracking-[0.12em] text-paper/80">{label}</span>
+      <span className="text-[10px] uppercase tracking-[0.12em] text-white/85">{label}</span>
     </button>
   );
 }

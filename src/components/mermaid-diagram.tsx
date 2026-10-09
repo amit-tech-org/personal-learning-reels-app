@@ -17,17 +17,17 @@ export function MermaidDiagram({ chart, id }: { chart: string; id: string }) {
           theme: "base",
           fontFamily: "Outfit, ui-sans-serif, sans-serif",
           themeVariables: {
-            darkMode: true,
+            darkMode: false,
             background: "transparent",
-            primaryColor: "#3a2a16",
-            primaryTextColor: "#f4ecdc",
-            primaryBorderColor: "#e6a23c",
-            secondaryColor: "#1b2823",
-            secondaryTextColor: "#f4ecdc",
-            tertiaryColor: "#241c14",
-            tertiaryTextColor: "#f4ecdc",
-            lineColor: "#e6a23c",
-            textColor: "#f4ecdc",
+            primaryColor: "#e7f3ff",
+            primaryTextColor: "#050505",
+            primaryBorderColor: "#1877f2",
+            secondaryColor: "#f0f2f5",
+            secondaryTextColor: "#050505",
+            tertiaryColor: "#e4e6eb",
+            tertiaryTextColor: "#050505",
+            lineColor: "#1877f2",
+            textColor: "#050505",
             fontSize: "15px",
           },
         });
@@ -46,17 +46,17 @@ export function MermaidDiagram({ chart, id }: { chart: string; id: string }) {
 
   if (failed) {
     return (
-      <pre className="max-h-64 overflow-auto rounded-2xl bg-ink-3 p-4 text-xs leading-5 text-muted">
+      <pre className="max-h-64 overflow-auto rounded-2xl bg-elevated p-4 text-xs leading-5 text-muted">
         {chart}
       </pre>
     );
   }
   if (!svg) {
-    return <div className="h-52 animate-pulse rounded-3xl bg-ink-3" aria-hidden />;
+    return <div className="h-52 animate-pulse rounded-3xl bg-elevated" aria-hidden />;
   }
   return (
     <div
-      className="mermaid-host overflow-x-auto rounded-3xl bg-ink-3/80 p-3"
+      className="mermaid-host overflow-x-auto rounded-3xl bg-elevated/80 p-3"
       // Mermaid sanitizes SVG when securityLevel is strict.
       dangerouslySetInnerHTML={{ __html: svg }}
     />

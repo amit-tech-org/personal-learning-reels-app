@@ -79,10 +79,10 @@ export function InterestEditor({
               onClick={() => togglePreset(topic)}
               className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
                 on && active === topic
-                  ? "border-amber bg-amber text-ink"
+                  ? "border-primary bg-primary text-white"
                   : on
-                    ? "border-amber/70 bg-amber/15 text-amber-2"
-                    : "border-line bg-ink-2 text-paper hover:border-muted"
+                    ? "border-primary/70 bg-primary/10 text-primary"
+                    : "border-line bg-surface text-foreground hover:border-muted"
               }`}
             >
               {topic}
@@ -97,7 +97,7 @@ export function InterestEditor({
               type="button"
               onClick={() => setActive(item.topic)}
               className={`rounded-full border px-3 py-1.5 text-sm ${
-                active === item.topic ? "border-amber bg-amber text-ink" : "border-amber/40 text-amber-2"
+                active === item.topic ? "border-primary bg-primary text-white" : "border-primary/40 text-primary"
               }`}
             >
               {item.topic}
@@ -125,15 +125,15 @@ export function InterestEditor({
       </form>
 
       {selected ? (
-        <div className="rounded-3xl border border-line bg-ink-2 p-4">
+        <div className="rounded-3xl border border-line bg-surface p-4">
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-[11px] uppercase tracking-[0.18em] text-faint">Tuning</p>
-              <h3 className="font-serif text-2xl text-paper">{selected.topic}</h3>
+              <h3 className="font-serif text-2xl text-foreground">{selected.topic}</h3>
             </div>
             <button
               type="button"
-              className="text-sm text-faint underline-offset-4 hover:text-paper hover:underline"
+              className="text-sm text-faint underline-offset-4 hover:text-foreground hover:underline"
               onClick={() => {
                 const remaining = interestsRef.current.filter((item) => item.topic !== selected.topic);
                 commit(remaining);
@@ -154,7 +154,7 @@ export function InterestEditor({
                 onClick={() => patch(selected.topic, { depth: depth.id })}
                 className={`rounded-2xl border px-2 py-2 text-sm ${
                   selected.depth === depth.id
-                    ? "border-amber bg-amber/15 text-amber-2"
+                    ? "border-primary bg-primary/10 text-primary"
                     : "border-line text-muted"
                 }`}
               >
@@ -174,7 +174,7 @@ export function InterestEditor({
                 onClick={() => patch(selected.topic, { weight })}
                 className={`h-9 w-9 rounded-full border text-sm ${
                   weight <= selected.weight
-                    ? "border-amber bg-amber text-ink"
+                    ? "border-primary bg-primary text-white"
                     : "border-line text-faint"
                 }`}
               >

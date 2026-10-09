@@ -12,14 +12,14 @@ export function Shell({ children }: { children: React.ReactNode }) {
     <div className="stage flex h-dvh overflow-hidden">
       <aside className="hidden w-80 shrink-0 flex-col justify-between border-r border-line px-8 py-10 lg:flex">
         <div>
-          <p className="font-serif text-4xl text-paper">Primer</p>
+          <p className="font-serif text-4xl text-foreground">Primer</p>
           <p className="mt-3 text-sm leading-6 text-muted">
             A private reel of short lessons. Nothing here is an account.
           </p>
           <ul className="mt-8 space-y-3">
             {profile.interests.map((interest) => (
               <li key={interest.topic} className="flex items-baseline justify-between gap-3 text-sm">
-                <span className="text-paper">{interest.topic}</span>
+                <span className="text-foreground">{interest.topic}</span>
                 <span className="text-faint">
                   {interest.depth} · {interest.weight}
                 </span>

@@ -16,7 +16,7 @@ export function BottomNav() {
       className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex justify-center pb-[max(0.7rem,env(safe-area-inset-bottom))]"
       aria-label="Primary"
     >
-      <div className="pointer-events-auto flex gap-1 rounded-full border border-line bg-ink/90 p-1 backdrop-blur">
+      <div className="pointer-events-auto flex gap-1 rounded-full border border-line bg-surface/95 p-1 shadow-sm backdrop-blur">
         {LINKS.map((link) => {
           const current = pathname === link.href;
           return (
@@ -25,7 +25,7 @@ export function BottomNav() {
               href={link.href}
               aria-current={current ? "page" : undefined}
               className={`rounded-full px-4 py-2 text-sm ${
-                current ? "bg-paper text-ink" : "text-muted hover:text-paper"
+                current ? "bg-primary text-white" : "text-muted hover:text-foreground"
               }`}
             >
               {link.label}

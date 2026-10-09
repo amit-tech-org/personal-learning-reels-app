@@ -253,8 +253,8 @@ export function ReelFeed({ mode }: { mode: "feed" | "saved" }) {
     return (
       <main className="grid h-full place-items-center px-8 text-center" data-testid="saved-view">
         <div>
-          <p className="text-[11px] uppercase tracking-[0.2em] text-amber">Saved</p>
-          <h1 className="mt-3 font-serif text-4xl text-paper">Nothing saved yet.</h1>
+          <p className="text-[11px] uppercase tracking-[0.2em] text-primary">Saved</p>
+          <h1 className="mt-3 font-serif text-4xl text-foreground">Nothing saved yet.</h1>
           <p className="mt-3 text-sm leading-6 text-muted">
             Tap the bookmark on a reel. Saved lessons stay on this device and open without a connection.
           </p>
@@ -300,7 +300,7 @@ export function ReelFeed({ mode }: { mode: "feed" | "saved" }) {
         {mode === "feed" && exhausted && !loading ? (
           <section className="reel grid h-dvh snap-start place-items-center px-8 text-center" data-reel-index={displayed.length + 1}>
             <div>
-              <h2 className="font-serif text-3xl text-paper">That is the end of this stretch.</h2>
+              <h2 className="font-serif text-3xl text-foreground">That is the end of this stretch.</h2>
               <p className="mt-3 text-sm leading-6 text-muted">
                 Nothing new in the bank matches these interests. When fewer than about twenty reels are unread, Primer asks Grok Bot for a refill.
               </p>
@@ -309,11 +309,11 @@ export function ReelFeed({ mode }: { mode: "feed" | "saved" }) {
         ) : null}
       </div>
       {error ? (
-        <div className="absolute inset-x-4 bottom-24 z-30 rounded-2xl border border-rose/40 bg-ink px-4 py-3 text-sm text-paper">
+        <div className="absolute inset-x-4 bottom-24 z-30 rounded-2xl border border-like/40 bg-surface px-4 py-3 text-sm text-foreground shadow-lg">
           <p>{error}</p>
           <button
             type="button"
-            className="mt-2 text-amber"
+            className="mt-2 text-primary"
             onClick={() => {
               setError(null);
               if (exhausted) setExhausted(false);
@@ -325,7 +325,7 @@ export function ReelFeed({ mode }: { mode: "feed" | "saved" }) {
         </div>
       ) : null}
       {note ? (
-        <p className="absolute inset-x-8 bottom-24 z-30 rounded-full bg-paper px-4 py-2 text-center text-sm text-ink" role="status">
+        <p className="absolute inset-x-8 bottom-24 z-30 rounded-full bg-foreground px-4 py-2 text-center text-sm text-white shadow-lg" role="status">
           {note}
         </p>
       ) : null}

@@ -14,8 +14,8 @@ export function SettingsScreen() {
 
   return (
     <main className="h-full overflow-y-auto px-5 pt-8 pb-28" data-testid="settings">
-      <p className="text-[11px] uppercase tracking-[0.2em] text-amber">Settings</p>
-      <h1 className="mt-2 font-serif text-4xl text-paper">Your interests</h1>
+      <p className="text-[11px] uppercase tracking-[0.2em] text-primary">Settings</p>
+      <h1 className="mt-2 font-serif text-4xl text-foreground">Your interests</h1>
       <p className="mt-3 text-sm leading-6 text-muted">
         {app.config?.mode === "bank"
           ? `The content bank has ${app.config.total ?? 0} reels. Grok Bot refills it when fewer than ${app.config.refillThreshold} are still unread.`
@@ -38,10 +38,10 @@ export function SettingsScreen() {
       >
         Save interests
       </Button>
-      {savedNote ? <p className="mt-3 text-sm text-mint">{savedNote}</p> : null}
+      {savedNote ? <p className="mt-3 text-sm text-success">{savedNote}</p> : null}
 
       <section className="mt-10 space-y-3 border-t border-line pt-6">
-        <h2 className="font-serif text-2xl text-paper">On this device</h2>
+        <h2 className="font-serif text-2xl text-foreground">On this device</h2>
         <p className="text-sm leading-6 text-muted">
           Likes, saves, and what you have already read live in this browser. Clearing the read list asks the feed for fresh reels. Erasing removes interests and saves too.
         </p>

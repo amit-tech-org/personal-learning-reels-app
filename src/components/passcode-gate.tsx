@@ -24,8 +24,8 @@ export function PasscodeGate() {
           if (message) setError(message);
         }}
       >
-        <p className="text-[11px] uppercase tracking-[0.22em] text-amber">Private</p>
-        <h1 className="mt-3 font-serif text-4xl leading-tight text-paper">This feed is locked.</h1>
+        <p className="text-[11px] uppercase tracking-[0.22em] text-primary">Private</p>
+        <h1 className="mt-3 font-serif text-4xl leading-tight text-foreground">This feed is locked.</h1>
         <p className="mt-3 text-sm leading-6 text-muted">
           Primer is for one person. The passcode stays on the server and only opens a session cookie.
         </p>
@@ -42,7 +42,7 @@ export function PasscodeGate() {
           required
         />
         {error ? (
-          <p className="mt-3 text-sm text-rose" role="alert">
+          <p className="mt-3 text-sm text-like" role="alert">
             {error}
           </p>
         ) : null}

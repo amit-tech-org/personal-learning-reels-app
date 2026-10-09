@@ -368,7 +368,7 @@ export function YoutubeReel({
             aria-valuenow={percent}
             aria-label="Video progress"
           >
-            <div className="h-full bg-amber" style={{ width: `${percent}%` }} />
+            <div className="h-full bg-primary" style={{ width: `${percent}%` }} />
           </div>
           <button
             type="button"
@@ -378,7 +378,7 @@ export function YoutubeReel({
           />
           <button
             type="button"
-            className="absolute top-3 left-3 z-20 flex items-center gap-2 rounded-full bg-black/55 px-3 py-2 text-paper ring-1 ring-white/15 backdrop-blur"
+            className="absolute top-3 left-3 z-20 flex items-center gap-2 rounded-full bg-black/55 px-3 py-2 text-white ring-1 ring-white/15 backdrop-blur"
             aria-label={muted ? "Unmute" : "Mute"}
             aria-pressed={!muted}
             data-testid="reel-mute"
@@ -388,9 +388,9 @@ export function YoutubeReel({
             {muted && active && !blocked ? <span className="text-xs">Tap for sound</span> : null}
           </button>
           {showPaused || blocked ? (
-            <span className="pointer-events-none absolute top-1/2 left-1/2 z-10 grid -translate-x-1/2 -translate-y-1/2 place-items-center text-paper">
+            <span className="pointer-events-none absolute top-1/2 left-1/2 z-10 grid -translate-x-1/2 -translate-y-1/2 place-items-center text-white">
               <span className="grid h-14 w-14 place-items-center rounded-full bg-black/55 ring-1 ring-white/20">
-                <Play className="h-6 w-6 fill-paper" />
+                <Play className="h-6 w-6 fill-white" />
               </span>
               {blocked ? <span className="mt-2 text-xs">Tap to play</span> : null}
             </span>
