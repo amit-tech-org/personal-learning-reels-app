@@ -61,7 +61,7 @@ There is no `LLM_API_KEY`, `LLM_BASE_URL`, or `LLM_MODEL`. The app does not call
 - The feed serves cards from the bank, filtered to your topics, skipping ones this browser has already queued. About one card in six is a video when the bank has one. Text reels have a title, bullets or a short body, a takeaway, a topic, and a depth. Diagram reels add Mermaid source.
 - Like, save, share (the system share sheet, or copy), **Deeper** (more cards on that topic from the bank, or a note for the next Grok Bot refill), and **Known** (recorded on the refill signal).
 - Saved reels are on the Saved tab and remain available offline, along with reels already loaded.
-- Video reels play from `youtube-nocookie.com`. The iframe mounts only after you tap Play on the active reel. A video card needs a YouTube id, a channel, and a duration of at most 180 seconds. The takeaway is optional.
+- Video reels autoplay when that card snaps into place, and pause when you scroll away. Playback starts muted (browsers block unmuted autoplay). Tap the sound control to unmute; later videos in the same visit start with sound when the browser allows it, and stay muted when it does not. The player is the YouTube IFrame API on `youtube-nocookie.com`, with our own play/pause tap, mute button, and progress bar. Only the active clip and the next video are loaded. A video card needs a YouTube id, a channel, and a duration of at most 180 seconds. The takeaway is optional. The YouTube logo stays on the player; the channel and a Watch on YouTube link sit under it.
 
 ## Short videos
 

@@ -53,6 +53,62 @@ body {
   scroll-snap-stop: always;
 }
 
+.yt-stage {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 1.5rem;
+  background: #000;
+  container-type: size;
+  touch-action: pan-y;
+}
+
+.yt-cover {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+@supports (width: 1cqw) {
+  .yt-cover {
+    inset: auto;
+    right: 0;
+    bottom: 0;
+    width: max(100cqw, calc(100cqh * 16 / 9));
+    height: max(100cqh, calc(100cqw * 9 / 16));
+  }
+}
+
+.yt-cover iframe {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  border: 0 !important;
+  overflow: hidden;
+  scrollbar-width: none;
+}
+
+.yt-cover iframe::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.yt-hit {
+  touch-action: pan-y;
+  background: transparent;
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    100% calc(100% - 4.75rem),
+    calc(100% - 5.5rem) calc(100% - 4.75rem),
+    calc(100% - 5.5rem) 100%,
+    0 100%
+  );
+}
+
 .mermaid-host svg {
   max-width: 100%;
   height: auto;

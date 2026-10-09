@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ReelCard } from "@/components/reel-card";
 import { useApp } from "@/components/app-state";
+import { nextVideoIndex } from "@/lib/youtube-playback";
 import type { Card, LibraryCard } from "@/lib/types";
 
 export function ReelFeed({ mode }: { mode: "feed" | "saved" }) {
@@ -52,6 +53,11 @@ export function ReelFeed({ mode }: { mode: "feed" | "saved" }) {
     }
     return ids;
   }, [mode, app.queue, savedIds, follow]);
+
+  const warmIndex = useMemo(() => {
+    const types = displayed.map((id) => app.cards[id]?.type ?? "");
+    return nextVideoIndex(types, activeIndex);
+  }, [displayed, app.cards, activeIndex]);
 
   const signalNeedMore = useCallback(
     async (reason: "queue-low" | "deeper", topic?: string, depth?: Card["depth"]) => {
@@ -271,6 +277,7 @@ export function ReelFeed({ mode }: { mode: "feed" | "saved" }) {
               <ReelCard
                 card={card}
                 active={index === activeIndex}
+                warm={index === warmIndex}
                 busy={busyId === card.id}
                 onLike={() => void app.toggleLike(card.id)}
                 onSave={() => void app.toggleSave(card.id)}

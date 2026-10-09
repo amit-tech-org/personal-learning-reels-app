@@ -50,7 +50,9 @@ Pages are `/` (the feed), `/saved`, and `/settings`. A client `AppStateProvider`
 
 `ServiceWorkerRegister` calls `navigator.serviceWorker.register("/sw.js")` only when `NODE_ENV` is `production`, so dev hot reload is not cached.
 
-Text reels show bullets and an optional body, plus the takeaway. Diagram reels render the card's `mermaid` string in the browser with Mermaid (`securityLevel: "strict"`, dark theme variables). There is no image-generation path and no Wikimedia card. Video reels show a poster until Play is tapped, and only while that reel is the active one. The iframe is `youtube-nocookie.com` and is not mounted before then.
+Text reels show bullets and an optional body, plus the takeaway. Diagram reels render the card's `mermaid` string in the browser with Mermaid (`securityLevel: "strict"`, dark theme variables). There is no image-generation path and no Wikimedia card.
+
+Video reels use the YouTube IFrame Player API on `https://www.youtube-nocookie.com` (`enablejsapi=1`, `controls=0`, `playsinline=1`, `rel=0`, `iv_load_policy=3`, `fs=0`, `disablekb=1`, no `modestbranding`). The feed's active card — an IntersectionObserver on the snap scroller, ratio at least 0.6 — is the playback signal. The snapped clip plays, the one you scroll off pauses, and the next video card is the only extra iframe. Autoplay is muted. The sound control unmutes the rest of the session when the browser allows it, and that attempt falls back to muted when it does not. The iframe is anchored to the bottom-right and cropped from the top and left so the picture covers the reel; our controls leave that corner clear so the YouTube logo stays visible and tappable. Channel name and a Watch on YouTube link sit under the player. There is no poster step.
 
 ## Service worker and caching
 

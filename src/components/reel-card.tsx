@@ -1,14 +1,16 @@
 "use client";
 
 import { Bookmark, Check, Heart, Layers, Share } from "lucide-react";
-import { useState } from "react";
 import { MermaidDiagram } from "@/components/mermaid-diagram";
+import { YoutubeReel } from "@/components/youtube-reel";
+import { shouldMountPlayer } from "@/lib/youtube-playback";
 import { formatDuration } from "@/lib/utils";
 import type { LibraryCard } from "@/lib/types";
 
 export function ReelCard({
   card,
   active,
+  warm,
   busy,
   onLike,
   onSave,
@@ -18,6 +20,7 @@ export function ReelCard({
 }: {
   card: LibraryCard;
   active: boolean;
+  warm: boolean;
   busy: boolean;
   onLike: () => void;
   onSave: () => void;
@@ -27,7 +30,7 @@ export function ReelCard({
 }) {
   return (
     <article
-      className="reel relative flex h-dvh snap-start snap-always flex-col px-5 pt-[max(1.25rem,env(safe-area-inset-top))] pr-20 pb-28"
+      className="reel relative flex h-dvh snap-start snap-always flex-col overflow-hidden px-5 pt-[max(1.25rem,env(safe-area-inset-top))] pr-20 pb-28"
       aria-label={`${card.type} reel: ${card.title}`}
     >
       <header className="flex items-center justify-between gap-3">
@@ -41,10 +44,16 @@ export function ReelCard({
       ) : null}
       <h2 className="mt-3 font-serif text-[2rem] leading-[1.12] tracking-tight text-paper">{card.title}</h2>
 
-      <div className="mt-5 min-h-0 flex-1 overflow-y-auto">
+      <div
+        className={
+          card.type === "video"
+            ? "mt-5 flex min-h-0 flex-1 flex-col overflow-hidden"
+            : "mt-5 min-h-0 flex-1 overflow-y-auto"
+        }
+      >
         {card.type === "text" ? <TextBody card={card} /> : null}
         {card.type === "diagram" ? <DiagramBody card={card} /> : null}
-        {card.type === "video" ? <VideoBody card={card} active={active} /> : null}
+        {card.type === "video" ? <VideoBody card={card} active={active} warm={warm} /> : null}
       </div>
 
       {card.takeaway ? (
@@ -102,43 +111,34 @@ function DiagramBody({ card }: { card: LibraryCard }) {
   );
 }
 
-function VideoBody({ card, active }: { card: LibraryCard; active: boolean }) {
-  const [playing, setPlaying] = useState(false);
-  const showPlayer = playing && active && card.youtubeId;
-  const poster = card.youtubeId ? `https://i.ytimg.com/vi/${card.youtubeId}/hqdefault.jpg` : undefined;
-
+function VideoBody({ card, active, warm }: { card: LibraryCard; active: boolean; warm: boolean }) {
+  const mount = Boolean(card.youtubeId) && shouldMountPlayer(active, warm);
   return (
-    <div className="space-y-3">
-      {showPlayer ? (
-        <iframe
-          className="aspect-video w-full rounded-3xl bg-black"
-          src={`https://www.youtube-nocookie.com/embed/${card.youtubeId}?rel=0&modestbranding=1`}
-          title={card.title}
-          loading="lazy"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-          allowFullScreen
-        />
+    <div className="flex h-full min-h-0 flex-col gap-3">
+      {mount && card.youtubeId ? (
+        <YoutubeReel videoId={card.youtubeId} title={card.title} active={active} />
       ) : (
-        <button
-          type="button"
-          className="relative block aspect-video w-full overflow-hidden rounded-3xl bg-ink-3 text-left"
-          onClick={() => setPlaying(true)}
-        >
-          {poster ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={poster} alt="" loading="lazy" className="h-full w-full object-cover opacity-80" />
-          ) : null}
-          <span className="absolute inset-0 grid place-items-center">
-            <span className="rounded-full bg-amber px-4 py-2 text-sm font-medium text-ink">Play</span>
-          </span>
-        </button>
+        <div className="yt-stage min-h-0 flex-1" />
       )}
-      <p className="text-sm text-muted">
-        {card.channelTitle ? `${card.channelTitle}` : "Video"}
+      <p className="shrink-0 text-sm text-muted">
+        {card.channelTitle ? card.channelTitle : "Video"}
         {card.durationSeconds ? ` · ${formatDuration(card.durationSeconds)}` : ""}
         {" · under 3 minutes"}
+        {card.youtubeId ? (
+          <>
+            {" · "}
+            <a
+              className="text-amber underline-offset-2 hover:underline"
+              href={`https://www.youtube.com/watch?v=${card.youtubeId}`}
+              target="_blank"
+              rel="noreferrer noopener"
+            >
+              Watch on YouTube
+            </a>
+          </>
+        ) : null}
       </p>
-      {card.body ? <p className="text-sm leading-6 text-muted">{card.body}</p> : null}
+      {card.body ? <p className="shrink-0 text-sm leading-6 text-muted">{card.body}</p> : null}
     </div>
   );
 }
