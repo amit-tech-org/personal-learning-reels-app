@@ -32,12 +32,14 @@ npm run build
 
 The bank lives in this app. Locally it is the writable file `data/content.json` (the committed seed). On Vercel, set the Upstash Redis REST variables below so ingest survives a serverless instance. That integration is the old Vercel KV path and works on the free tier.
 
-1. The phone keeps an unread queue in IndexedDB. When that queue drops under `REFILL_UNREAD_THRESHOLD` (default 20), the app `POST`s `/api/content/need-more`.
-2. Grok Bot polls `GET /api/content/status` with `Authorization: Bearer $CONTENT_BOT_TOKEN`. `needsRefill` is true when the latest queue report is under the threshold. `deeperTopics` lists topics the reader asked to go further on. Those are a preference for the next refill, not a separate generator.
-3. Grok Bot writes the lessons offline and `POST`s `/api/content/ingest` with the same bearer token. A successful ingest replaces cards with the same id and clears the pending signals.
+1. The phone keeps an unread queue in IndexedDB. When that queue drops under `REFILL_UNREAD_THRESHOLD` (default 20), the app `POST`s `/api/content/need-more`. **Deeper** posts the same route with a topic the reader wants more of.
+2. When `REFILL_WEBHOOK_URL` and `REFILL_WEBHOOK_KEY` are both set, that low-queue or deeper signal wakes Grok Bot. The server `POST`s the webhook URL with `Authorization: Bearer <REFILL_WEBHOOK_KEY>` and a JSON body. The body always has `unReadCardCount` (number), `topics` (string array of the reader's topics), and `deeperCards` (deeper-topic requests, each `{ topic, depth }` when a depth was sent). It also sends `threshold`, `at` (ISO time of the wake-up), and `appUrl` (the origin of the need-more request). One low-queue episode sends one wake-up: the content document stores `refillPendingAt` until ingest clears it. A lost wake-up can be sent again after 15 minutes. A burst of need-more calls does not send a burst of webhooks. The POST uses a short timeout, and a failure does not fail or delay the phone's response.
+3. Grok Bot writes the lessons offline and `POST`s `/api/content/ingest` with `Authorization: Bearer $CONTENT_BOT_TOKEN`. A successful ingest replaces cards with the same id, clears the pending signals, and clears `refillPendingAt`.
 4. The app keeps prefetching `GET /api/content/feed`. New cards show up on the next page.
 
-Demo mode needs none of this. Leave `CONTENT_BOT_TOKEN` empty and the seed bank still serves. Ingest and status stay closed until the token is set.
+`GET /api/content/status` with the bot token stays as a fallback for an occasional reconciliation, and it is the way to notice a refill when the webhook variables are unset. `needsRefill` is true when the latest queue report is under the threshold. `deeperTopics` lists topics the reader asked to go further on. Those are a preference for the next refill, not a separate generator.
+
+Demo mode needs none of this. Leave `CONTENT_BOT_TOKEN` empty and the seed bank still serves. Ingest and status stay closed until the token is set. Leave the webhook variables empty and need-more only records the signal, the same as the polling setup.
 
 ## Environment
 
@@ -48,6 +50,8 @@ Copy `.env.example` to `.env.local`.
 | `APP_PASSCODE` | When set, the human app requires this passcode and stores an httpOnly cookie for 30 days. Leave empty on your own machine. |
 | `CONTENT_BOT_TOKEN` | Bearer token for `POST /api/content/ingest` and `GET /api/content/status`. Separate from the passcode. Empty means demo mode: seed only, ingest closed. |
 | `REFILL_UNREAD_THRESHOLD` | Unread cards below this count signal a refill. Default `20`. |
+| `REFILL_WEBHOOK_URL` | Optional. With the key, a low queue or deeper request POSTs a wake-up here so Grok Bot does not have to poll. |
+| `REFILL_WEBHOOK_KEY` | Optional. Sent only as `Authorization: Bearer` on that wake-up. Server-only. Both this and the URL must be set, or the push stays off. |
 | `KV_REST_API_URL` | Upstash Redis REST URL. With the token, this is the durable bank on Vercel. |
 | `KV_REST_API_TOKEN` | Upstash Redis REST token. `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` are aliases. |
 | `CONTENT_DATA_PATH` | Optional path for the JSON file store. Default `data/content.json`. |
@@ -85,7 +89,8 @@ The app is a Next.js project and deploys to Vercel without a database of its own
 1. Push the repo and import it in Vercel.
 2. Set `APP_PASSCODE` before the URL is public.
 3. Set `CONTENT_BOT_TOKEN` to a long random secret you also give Grok Bot.
-4. Attach Upstash Redis (the Vercel Redis / KV integration; the free tier is enough for one person's bank) and keep `KV_REST_API_URL` and `KV_REST_API_TOKEN`. Without them, the deployed filesystem cannot store ingest.
-5. Deploy. Vercel serves the route handlers, `manifest.webmanifest`, and `public/sw.js`.
+4. Attach Upstash Redis (the Vercel Redis / KV integration; the free tier is enough for one person's bank) and keep `KV_REST_API_URL` and `KV_REST_API_TOKEN`. Without them, the deployed filesystem cannot store ingest or the wake-up flag.
+5. Set `REFILL_WEBHOOK_URL` and `REFILL_WEBHOOK_KEY` in the Vercel project. The URL is the bot's wake-up endpoint. The key is the bearer this app sends to that endpoint. Leave both empty to keep status polling as the only refill signal.
+6. Deploy. Vercel serves the route handlers, `manifest.webmanifest`, and `public/sw.js`.
 
-The seed file is still the fallback when Redis has no document yet. Keys are read only in server code. The browser receives cards, not the bot token or the passcode.
+The seed file is still the fallback when Redis has no document yet. Keys are read only in server code. The browser receives cards, not the bot token, the passcode, or the refill webhook URL and key.

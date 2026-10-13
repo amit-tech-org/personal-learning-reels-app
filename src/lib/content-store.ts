@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import seedJson from "../../data/content.json";
 import type { z } from "zod";
 import { contentStoreKind, redisRestConfig, refillThreshold } from "./env";
+import { claimRefillWebhook, type RefillWebhookPayload } from "./refill-webhook";
 import { contentCardSchema, needMoreRequestSchema, signalSchema } from "./schema";
 import { topicsMatch } from "./text";
 import type { ContentCard, ContentDocument, Depth, RefillSignal } from "./types";
@@ -53,7 +54,19 @@ export function parseDocument(input: unknown): ContentDocument {
   if (!signals.success) {
     throw new ContentStoreError("Refill signals in the content bank are not valid.", 500);
   }
-  return { cards: sortCards(cards.data), signals: signals.data };
+  const refillPendingAt = pendingAtFrom(record.refillPendingAt);
+  return refillPendingAt
+    ? { cards: sortCards(cards.data), signals: signals.data, refillPendingAt }
+    : { cards: sortCards(cards.data), signals: signals.data };
+}
+
+function pendingAtFrom(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  const parsed = Date.parse(trimmed);
+  if (!Number.isFinite(parsed)) return undefined;
+  return new Date(parsed).toISOString();
 }
 
 export function sortCards(cards: ContentCard[]): ContentCard[] {
@@ -108,6 +121,7 @@ export function mergeCards(doc: ContentDocument, incoming: ContentCard[]): Conte
 export function applyIngest(doc: ContentDocument, incoming: ContentCard[]): ContentDocument {
   const byId = new Map(doc.cards.map((card) => [card.id, card]));
   for (const card of incoming) byId.set(card.id, card);
+  // A stored batch ends the refill episode, so the wake-up flag is not copied forward.
   return { cards: sortCards([...byId.values()]), signals: [] };
 }
 
@@ -311,7 +325,16 @@ export async function mergeIntoBank(cards: ContentCard[]): Promise<ContentDocume
   return updateDocument((doc) => mergeCards(doc, cards));
 }
 
-export async function recordNeedMore(input: NeedMoreInput, now = new Date()): Promise<ContentDocument> {
+export interface RecordedNeedMore {
+  doc: ContentDocument;
+  webhook: RefillWebhookPayload | null;
+}
+
+export async function recordNeedMore(
+  input: NeedMoreInput,
+  now = new Date(),
+  appUrl?: string,
+): Promise<RecordedNeedMore> {
   const signal: RefillSignal = {
     id: `sig_${randomUUID()}`,
     at: now.toISOString(),
@@ -323,7 +346,14 @@ export async function recordNeedMore(input: NeedMoreInput, now = new Date()): Pr
     knownTopics: input.knownTopics,
     seenCounts: input.seenCounts,
   };
-  return updateDocument((doc) => applySignal(doc, signal));
+  const claimed: { webhook: RefillWebhookPayload | null } = { webhook: null };
+  const doc = await updateDocument((current) => {
+    const withSignal = applySignal(current, signal);
+    const next = claimRefillWebhook(withSignal, signal, now, appUrl);
+    claimed.webhook = next.payload;
+    return next.doc;
+  });
+  return { doc, webhook: claimed.webhook };
 }
 
 export async function getContentStatus() {

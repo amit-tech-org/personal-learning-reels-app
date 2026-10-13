@@ -177,24 +177,5 @@
       "channelTitle": "Fireship"
     }
   ],
-  "signals": [
-    {
-      "id": "sig_d3fe1c7e-ba54-45db-a616-de1ae56b36e3",
-      "at": "2026-10-09T16:31:02.898Z",
-      "unread": 0,
-      "reason": "queue-low",
-      "interests": [
-        {
-          "topic": "System Design",
-          "weight": 3,
-          "depth": "beginner",
-          "custom": false
-        }
-      ],
-      "knownTopics": [],
-      "seenCounts": {
-        "System Design": 4
-      }
-    }
-  ]
+  "signals": []
 }

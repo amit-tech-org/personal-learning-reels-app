@@ -78,4 +78,9 @@ export interface RefillSignal {
 export interface ContentDocument {
   cards: ContentCard[];
   signals: RefillSignal[];
+  /**
+   * ISO time of the last refill wake-up for this episode.
+   * Ingest clears it. Absent when no wake-up is in flight.
+   */
+  refillPendingAt?: string;
 }

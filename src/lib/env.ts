@@ -27,6 +27,29 @@ export function refillThreshold(): number {
   return intEnv("REFILL_UNREAD_THRESHOLD", 20);
 }
 
+export interface RefillWebhookConfig {
+  url: string;
+  key: string;
+}
+
+/**
+ * Server-only wake-up target. Both values are required.
+ * A missing value, or a URL that is not http(s), leaves the push off.
+ * Never log the result or send it to the browser.
+ */
+export function refillWebhookConfig(): RefillWebhookConfig | null {
+  const url = process.env.REFILL_WEBHOOK_URL?.trim() ?? "";
+  const key = process.env.REFILL_WEBHOOK_KEY?.trim() ?? "";
+  if (!url || !key) return null;
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return null;
+  } catch {
+    return null;
+  }
+  return { url, key };
+}
+
 export interface RedisRestConfig {
   url: string;
   token: string;

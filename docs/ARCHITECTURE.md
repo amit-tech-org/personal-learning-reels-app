@@ -35,10 +35,15 @@ flowchart TB
     YT -.-> Store
   end
 
+  Hook["Refill webhook<br/>Bearer key"]
+  Bot[Grok Bot]
+
   UI -->|"cursor, topics, seen ids"| Feed
   UI -->|"unread under threshold"| Need
   Feed --> UI
-  Bot[Grok Bot] --> Status
+  Need -->|"wake-up, once per episode"| Hook
+  Hook --> Bot
+  Bot -.->|"fallback status"| Status
   Bot --> Ingest
 ```
 
@@ -78,13 +83,17 @@ Unread count is the queue entries that have no `seenAt`. When that count is unde
 
 ## Content bank
 
-`src/lib/content-store.ts` holds one document: `{ cards, signals }`.
+`src/lib/content-store.ts` holds one document: `{ cards, signals, refillPendingAt? }`. `refillPendingAt` is set only while a refill wake-up is in flight.
 
 Cards are zod-checked. A card has `id`, `type` (`text`, `diagram`, or `video`), `topic`, `depth`, `title`, and `createdAt`. Text and diagram cards need a takeaway. Text cards need 3–6 bullets or a body of at least 40 characters. Diagram cards need `mermaid`. Video cards need an 11-character `youtubeId`, `channelTitle`, and `durationSeconds` from 1 to 180. A video takeaway is optional. Image cards are rejected.
 
 Lessons stay in `createdAt` order. `weaveFeed` then inserts a video after every five lessons, so a full page of six is about one video when the bank has one. `cursor` is the last card id in that woven list. `topics` (repeatable) limits the page to the reader's interests. `exclude` drops ids this browser already has. `topic` plus `deeper=1` returns unseen lesson cards on that topic, higher depth first, and does not spend a YouTube search. If that page is empty, the client posts a `deeper` signal so the next Grok Bot refill can prefer the topic. A deeper signal does not by itself set `needsRefill`.
 
-Signals are the app's note to Grok Bot. A `queue-low` signal replaces the previous one and carries `unread`, interests, known topics, and seen counts. `needsRefill` is true only when that reported unread count is under the threshold. `POST /api/content/ingest` upserts by id and clears signals, so the bot should read status before it pushes.
+Signals are the app's note to Grok Bot. A `queue-low` signal replaces the previous one and carries `unread`, interests, known topics, and seen counts. `needsRefill` is true only when that reported unread count is under the threshold.
+
+When `REFILL_WEBHOOK_URL` and `REFILL_WEBHOOK_KEY` are both set, recording a low-queue signal under the threshold, or a deeper signal, wakes the bot. The server `POST`s the webhook with `Authorization: Bearer <REFILL_WEBHOOK_KEY>`. The JSON always includes `unReadCardCount`, `topics`, and `deeperCards` (`{ topic, depth }` for each open deeper request). It also includes `threshold`, `at`, and `appUrl` when the need-more request has an http(s) origin. The document stores `refillPendingAt` in the same Redis value or JSON file. Further need-more calls in that episode do not send another webhook. Ingest clears the flag with the signals. If the POST was lost, the next need-more after 15 minutes may send again. The outbound call has a 2.5s timeout, runs after the response is scheduled, and a failure is ignored so the phone still gets `{ ok: true }`. Neither the URL nor the key is logged or returned to the browser.
+
+If either webhook variable is unset, need-more only records the signal. `GET /api/content/status` remains the fallback for an occasional reconciliation in both modes. `POST /api/content/ingest` upserts by id and clears signals and `refillPendingAt`.
 
 ## Store
 
@@ -101,7 +110,7 @@ Demo mode is `CONTENT_BOT_TOKEN` unset. `GET /api/content/feed` still serves the
 
 `src/lib/youtube.ts` runs only when `YOUTUBE_API_KEY` is set. The key stays in the server process. `GET /api/content/feed` (except deeper) and `POST /api/content/need-more` call `topUpShortVideos` when fewer than two unseen video cards remain for the requested topics. Unseen means a video whose id is not in the client's `exclude` list. Need-more has no exclude list, so it counts videos still in the bank.
 
-The search uses `type=video`, `videoEmbeddable=true`, and `videoDuration=short`, then loads `contentDetails.duration`. `parseIso8601Duration` and `filterByDuration` keep a positive length of at most 180 seconds. Anything longer, unparseable, or duplicated by `youtubeId` is dropped. New cards are merged into the bank without clearing Grok Bot's refill signals. Ids are `yt_` plus the video id, so the same clip is not stored twice.
+The search uses `type=video`, `videoEmbeddable=true`, and `videoDuration=short`, then loads `contentDetails.duration`. `parseIso8601Duration` and `filterByDuration` keep a positive length of at most 180 seconds. Anything longer, unparseable, or duplicated by `youtubeId` is dropped. New cards are merged into the bank without clearing Grok Bot's refill signals or `refillPendingAt`. Ids are `yt_` plus the video id, so the same clip is not stored twice.
 
 A topic's result is cached for 10 minutes. A process makes at most one search burst a minute and 24 searches per UTC day. The counters are in memory and reset on restart. If the key is missing or a call fails, the feed continues with the cards already in the bank. Grok Bot can also push video cards through ingest; the curator is the other path, not a replacement.
 
@@ -114,9 +123,9 @@ A topic's result is cached for 10 minutes. A process makes at most one search bu
 | `POST /api/auth/logout` | Public | Clears the cookie |
 | `GET /api/config` | Session | `{ mode, store, refillThreshold, total, youtube }` |
 | `GET /api/content/feed` | Session | Next cards. Query: `cursor`, `limit` (1–20), `topics`, `exclude`, optional `topic` and `deeper=1` |
-| `POST /api/content/need-more` | Session | Records a low-queue or deeper preference |
-| `GET /api/content/status` | Bot token | `{ total, needsRefill, unreadReported, deeperTopics, signals }` |
-| `POST /api/content/ingest` | Bot token | Zod-validated batch, upsert by id, clear signals |
+| `POST /api/content/need-more` | Session | Records a low-queue or deeper preference, and wakes the refill webhook once per episode when configured |
+| `GET /api/content/status` | Bot token | Fallback reconciliation: `{ total, needsRefill, unreadReported, deeperTopics, signals }` |
+| `POST /api/content/ingest` | Bot token | Zod-validated batch, upsert by id, clear signals and the wake-up flag |
 
 `src/proxy.ts` runs on `/api/:path*`. If `APP_PASSCODE` is unset, every API request proceeds. If it is set, every API path except `/api/auth/*`, `/api/content/ingest`, and `/api/content/status` needs a valid session or the proxy returns 401. Ingest and status skip the session check and require `Authorization: Bearer $CONTENT_BOT_TOKEN` instead. The feed pages themselves are not behind the proxy; the client hides them until unlock.
 
